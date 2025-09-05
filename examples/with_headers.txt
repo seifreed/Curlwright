@@ -1,0 +1,6 @@
+curl -X GET \
+  -H "User-Agent: CurlWright/1.0" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "X-Custom-Header: CustomValue" \
+  https://httpbin.org/headers

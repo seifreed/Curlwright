@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "curlwright"
+version = "1.0.0"
+description = "Cloudflare bypass tool using Playwright for curl requests"
+readme = "README.md"
+authors = [
+    { name = "Marc Rivero", email = "mriverolopez@gmail.com" }
+]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Testing",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = [
+    "cloudflare",
+    "bypass",
+    "playwright",
+    "curl",
+    "web-scraping",
+    "automation",
+    "browser-automation",
+    "turnstile",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "playwright>=1.40.0",
+    "asyncio>=3.4.3"
+]
+
+[project.urls]
+Homepage = "https://github.com/seifreed/Curlwright"
+Documentation = "https://github.com/seifreed/Curlwright#readme"
+Repository = "https://github.com/seifreed/Curlwright"
+Issues = "https://github.com/seifreed/Curlwright/issues"
+
+[project.scripts]
+curlwright = "curlwright.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.20",
+    "black>=22.0",
+    "flake8>=5.0",
+    "mypy>=0.990",
+    "twine>=4.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+packages = ["curlwright", "src", "src.core", "src.parsers", "src.utils"]
+
+[tool.setuptools.package-data]
+curlwright = ["*.txt", "*.md"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.tox
+  | venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"

@@ -1,0 +1,5 @@
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"name":"test","value":123,"active":true}' \
+  https://httpbin.org/post
