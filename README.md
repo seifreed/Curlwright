@@ -15,6 +15,7 @@ CurlWright is a Cloudflare bypass tool that leverages Playwright to execute curl
 - ✅ **Modular Architecture** - Clean, maintainable, and extensible codebase
 - ✅ **Retry Mechanism** - Automatic retries with configurable delays
 - ✅ **Headless & Visual Mode** - Run in background or watch the browser
+- ✅ **Server Mode** - Run on servers without X11/GUI requirements
 
 ## Installation
 
@@ -76,7 +77,7 @@ asyncio.run(main())
 ## Command Line Options
 
 ```
-usage: curlwright [-h] (-c CURL | -f FILE) [--headless] [--user-agent USER_AGENT]
+usage: curlwright [-h] (-c CURL | -f FILE) [--headless] [--no-gui] [--user-agent USER_AGENT]
                   [--timeout TIMEOUT] [--retries RETRIES] [--delay DELAY]
                   [-o OUTPUT] [-v]
 
@@ -88,6 +89,7 @@ Required Arguments:
 
 Browser Options:
   --headless                   Run browser in headless mode
+  --no-gui                     Run in server mode without X11/display requirement (implies --headless)
   --user-agent USER_AGENT      Custom user agent string
   --timeout TIMEOUT            Request timeout in seconds (default: 30)
 
@@ -135,6 +137,28 @@ Then execute:
 ```bash
 curlwright -f request.txt -o response.json
 ```
+
+### Server Mode (No GUI/X11)
+
+For running on servers without display support:
+
+```bash
+# Run on a VPS or container without X11
+curlwright -c "curl https://api.example.com/data" --no-gui
+
+# Process API requests on a headless server
+curlwright -f api_request.txt --no-gui -o result.json
+
+# Use in CI/CD pipelines
+curlwright -c "curl https://protected-site.com" --no-gui --timeout 60
+```
+
+The `--no-gui` flag is optimized for server environments and includes:
+- No X11/display requirement
+- Reduced memory footprint
+- Disabled GPU acceleration
+- Optimized for containerized environments (Docker, Kubernetes)
+- Suitable for VPS, cloud servers, and CI/CD pipelines
 
 ## Python API
 

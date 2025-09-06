@@ -21,11 +21,15 @@ async def main():
     args = cli.parse_arguments()
     
     try:
+        # Handle no-gui mode (force headless)
+        headless_mode = args.headless or args.no_gui
+        
         # Initialize request executor
         executor = RequestExecutor(
-            headless=args.headless,
+            headless=headless_mode,
             timeout=args.timeout,
-            user_agent=args.user_agent
+            user_agent=args.user_agent,
+            no_gui=args.no_gui
         )
         
         # Get curl command

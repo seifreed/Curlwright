@@ -9,9 +9,12 @@ from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
-# Read requirements
-requirements = (this_directory / "requirements.txt").read_text(encoding="utf-8").splitlines()
-requirements = [line.strip() for line in requirements if line.strip() and not line.startswith("#")]
+# Read requirements from file if it exists
+try:
+    requirements = (this_directory / "requirements.txt").read_text(encoding="utf-8").splitlines()
+    requirements = [line.strip() for line in requirements if line.strip() and not line.startswith("#")]
+except:
+    requirements = ["playwright>=1.40.0", "asyncio>=3.4.3"]
 
 setup(
     name="curlwright",

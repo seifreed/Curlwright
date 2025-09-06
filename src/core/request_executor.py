@@ -15,7 +15,7 @@ logger = setup_logger(__name__)
 class RequestExecutor:
     """Executes curl requests using Playwright browser"""
     
-    def __init__(self, headless: bool = False, timeout: int = 30, user_agent: Optional[str] = None):
+    def __init__(self, headless: bool = False, timeout: int = 30, user_agent: Optional[str] = None, no_gui: bool = False):
         """
         Initialize request executor
         
@@ -23,8 +23,9 @@ class RequestExecutor:
             headless: Run browser in headless mode
             timeout: Default timeout for requests
             user_agent: Custom user agent
+            no_gui: Run without X11/display requirement
         """
-        self.browser_manager = BrowserManager(headless=headless, user_agent=user_agent)
+        self.browser_manager = BrowserManager(headless=headless, user_agent=user_agent, no_gui=no_gui)
         self.default_timeout = timeout
         self.parser = CurlParser()
         self.initialized = False

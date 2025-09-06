@@ -53,6 +53,12 @@ Examples:
             help='Run browser in headless mode (default: False)'
         )
         browser_group.add_argument(
+            '--no-gui',
+            action='store_true',
+            default=False,
+            help='Run in server mode without X11/display requirement (implies --headless)'
+        )
+        browser_group.add_argument(
             '--user-agent',
             type=str,
             default=None,

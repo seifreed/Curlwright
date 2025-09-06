@@ -13,15 +13,17 @@ logger = setup_logger(__name__)
 class BrowserManager:
     """Manages Playwright browser instances and contexts"""
     
-    def __init__(self, headless: bool = False, user_agent: Optional[str] = None):
+    def __init__(self, headless: bool = False, user_agent: Optional[str] = None, no_gui: bool = False):
         """
         Initialize browser manager
         
         Args:
             headless: Run browser in headless mode
             user_agent: Custom user agent string
+            no_gui: Run without X11/display requirement
         """
         self.headless = headless
+        self.no_gui = no_gui
         self.user_agent = user_agent or self._get_default_user_agent()
         self.playwright = None
         self.browser: Optional[Browser] = None
@@ -37,18 +39,54 @@ class BrowserManager:
         try:
             self.playwright = await async_playwright().start()
             
+            # Browser launch arguments
+            browser_args = [
+                '--disable-blink-features=AutomationControlled',
+                '--disable-dev-shm-usage',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-web-security',
+                '--disable-features=IsolateOrigins,site-per-process',
+            ]
+            
+            # Add no-gui specific arguments for server environments
+            if self.no_gui:
+                browser_args.extend([
+                    '--disable-gpu',
+                    '--disable-software-rasterizer',
+                    '--disable-dev-tools',
+                    '--no-zygote',
+                    '--single-process',
+                    '--disable-extensions',
+                    '--disable-images',
+                    '--mute-audio',
+                    '--hide-scrollbars',
+                    '--disable-background-networking',
+                    '--disable-background-timer-throttling',
+                    '--disable-breakpad',
+                    '--disable-client-side-phishing-detection',
+                    '--disable-component-extensions-with-background-pages',
+                    '--disable-default-apps',
+                    '--disable-features=TranslateUI',
+                    '--disable-hang-monitor',
+                    '--disable-ipc-flooding-protection',
+                    '--disable-popup-blocking',
+                    '--disable-prompt-on-repost',
+                    '--disable-renderer-backgrounding',
+                    '--disable-sync',
+                    '--force-color-profile=srgb',
+                    '--metrics-recording-only',
+                    '--no-first-run',
+                    '--password-store=basic',
+                    '--use-mock-keychain',
+                ])
+            else:
+                browser_args.append('--start-maximized')
+            
             # Launch browser with anti-detection settings
             self.browser = await self.playwright.chromium.launch(
                 headless=self.headless,
-                args=[
-                    '--disable-blink-features=AutomationControlled',
-                    '--disable-dev-shm-usage',
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-web-security',
-                    '--disable-features=IsolateOrigins,site-per-process',
-                    '--start-maximized'
-                ]
+                args=browser_args
             )
             
             # Create context with anti-detection settings
