@@ -3,10 +3,18 @@ Curl command parser module
 Parses curl commands and converts them to request objects
 """
 
-import re
 import shlex
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+from src.runtime_compat import ensure_supported_python
+
+ensure_supported_python()
+
+type HeaderMap = dict[str, str]
+type CookieMap = dict[str, str]
+type AuthCredentials = tuple[str, str]
+type QueryPairs = list[tuple[str, str]]
 
 
 @dataclass
@@ -14,16 +22,16 @@ class CurlRequest:
     """Represents a parsed curl request"""
     url: str
     method: str = "GET"
-    headers: Dict[str, str] = field(default_factory=dict)
-    data: Optional[str] = None
-    cookies: Dict[str, str] = field(default_factory=dict)
-    auth: Optional[tuple] = None
-    follow_redirects: bool = True
+    headers: HeaderMap = field(default_factory=dict)
+    data: str | None = None
+    cookies: CookieMap = field(default_factory=dict)
+    auth: AuthCredentials | None = None
+    follow_redirects: bool = False
     verify_ssl: bool = True
-    timeout: Optional[int] = None
-    proxy: Optional[str] = None
+    timeout: int | None = None
+    proxy: str | None = None
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Convert to dictionary for easy serialization"""
         return {
             'url': self.url,
@@ -79,6 +87,9 @@ class CurlParser:
         # Initialize request object
         request = CurlRequest(url="")
         
+        append_data_to_query = False
+        query_pairs: QueryPairs = []
+
         # Parse tokens
         i = 0
         while i < len(tokens):
@@ -105,19 +116,23 @@ class CurlParser:
             elif token in ['-d', '--data', '--data-raw', '--data-binary']:
                 i += 1
                 if i < len(tokens):
-                    request.data = tokens[i]
-                    if request.method == "GET":
+                    if append_data_to_query:
+                        query_pairs.extend(self._parse_form_pairs(tokens[i]))
+                    else:
+                        request.data = self._append_request_data(request.data, tokens[i])
+                    if request.method == "GET" and not append_data_to_query:
                         request.method = "POST"
             
             elif token == '--data-urlencode':
                 i += 1
                 if i < len(tokens):
-                    # Handle URL encoded data
-                    if request.data:
-                        request.data += "&" + tokens[i]
+                    encoded_pairs = self._parse_data_urlencode(tokens[i])
+                    if append_data_to_query:
+                        query_pairs.extend(encoded_pairs)
                     else:
-                        request.data = tokens[i]
-                    if request.method == "GET":
+                        encoded_string = urlencode(encoded_pairs, doseq=True)
+                        request.data = self._append_request_data(request.data, encoded_string)
+                    if request.method == "GET" and not append_data_to_query:
                         request.method = "POST"
             
             elif token in ['-b', '--cookie']:
@@ -150,6 +165,7 @@ class CurlParser:
                 request.method = "HEAD"
             
             elif token in ['-G', '--get']:
+                append_data_to_query = True
                 request.method = "GET"
             
             elif token == '--compressed':
@@ -174,6 +190,12 @@ class CurlParser:
         # Ensure URL has protocol
         if not request.url.startswith(('http://', 'https://')):
             request.url = 'https://' + request.url
+
+        if append_data_to_query:
+            if request.data:
+                query_pairs.extend(self._parse_form_pairs(request.data))
+                request.data = None
+            request.url = self._append_query_pairs(request.url, query_pairs)
         
         self.request = request
         return request
@@ -201,6 +223,35 @@ class CurlParser:
             request.auth = (username, password)
         else:
             request.auth = (auth_string, '')
+
+    def _append_request_data(self, existing_data: str | None, new_data: str) -> str:
+        """Append form-style data fragments preserving curl ordering."""
+        if not existing_data:
+            return new_data
+        return f"{existing_data}&{new_data}"
+
+    def _parse_form_pairs(self, raw_data: str) -> QueryPairs:
+        """Parse form-like data into query parameter pairs."""
+        if '=' not in raw_data:
+            return [("", raw_data)]
+        return parse_qsl(raw_data, keep_blank_values=True)
+
+    def _parse_data_urlencode(self, value: str) -> QueryPairs:
+        """Parse `--data-urlencode` values into structured pairs."""
+        if "=" not in value:
+            return [("", value)]
+        key, raw_value = value.split("=", 1)
+        return [(key, raw_value)]
+
+    def _append_query_pairs(self, url: str, query_pairs: QueryPairs) -> str:
+        """Append query pairs to a URL without dropping existing parameters."""
+        if not query_pairs:
+            return url
+
+        parsed = urlsplit(url)
+        current_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+        updated_query = urlencode(current_pairs + query_pairs, doseq=True)
+        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, updated_query, parsed.fragment))
     
     def parse_from_file(self, file_path: str) -> CurlRequest:
         """

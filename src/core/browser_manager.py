@@ -3,9 +3,18 @@ Browser manager module for handling Playwright browser instances
 """
 
 import asyncio
-from typing import Optional, Dict, Any
-from playwright.async_api import async_playwright, Browser, Page, BrowserContext
+from typing import TYPE_CHECKING
+
+from src.runtime_compat import ensure_supported_python
 from src.utils.logger import setup_logger
+
+ensure_supported_python()
+
+if TYPE_CHECKING:
+    from playwright.async_api import Browser, BrowserContext, Page
+
+type HttpCredentials = dict[str, str]
+type ProxyConfig = dict[str, str]
 
 logger = setup_logger(__name__)
 
@@ -13,7 +22,15 @@ logger = setup_logger(__name__)
 class BrowserManager:
     """Manages Playwright browser instances and contexts"""
     
-    def __init__(self, headless: bool = False, user_agent: Optional[str] = None, no_gui: bool = False):
+    def __init__(
+        self,
+        headless: bool = False,
+        user_agent: str | None = None,
+        no_gui: bool = False,
+        proxy: str | None = None,
+        verify_ssl: bool = True,
+        http_credentials: HttpCredentials | None = None,
+    ):
         """
         Initialize browser manager
         
@@ -21,14 +38,20 @@ class BrowserManager:
             headless: Run browser in headless mode
             user_agent: Custom user agent string
             no_gui: Run without X11/display requirement
+            proxy: Proxy server to use for browser traffic
+            verify_ssl: Whether to verify TLS certificates
+            http_credentials: Optional HTTP basic auth credentials
         """
         self.headless = headless
         self.no_gui = no_gui
+        self.proxy = proxy
+        self.verify_ssl = verify_ssl
+        self.http_credentials = http_credentials
         self.user_agent = user_agent or self._get_default_user_agent()
         self.playwright = None
-        self.browser: Optional[Browser] = None
-        self.context: Optional[BrowserContext] = None
-        self.page: Optional[Page] = None
+        self.browser: Browser | None = None
+        self.context: BrowserContext | None = None
+        self.page: Page | None = None
     
     def _get_default_user_agent(self) -> str:
         """Get default user agent for Chrome"""
@@ -37,6 +60,8 @@ class BrowserManager:
     async def initialize(self) -> None:
         """Initialize browser and context"""
         try:
+            from playwright.async_api import async_playwright
+
             self.playwright = await async_playwright().start()
             
             # Browser launch arguments
@@ -84,18 +109,23 @@ class BrowserManager:
                 browser_args.append('--start-maximized')
             
             # Launch browser with anti-detection settings
-            self.browser = await self.playwright.chromium.launch(
-                headless=self.headless,
-                args=browser_args
-            )
+            launch_options: dict[str, bool | list[str] | ProxyConfig] = {
+                'headless': self.headless,
+                'args': browser_args,
+            }
+            if self.proxy:
+                launch_options['proxy'] = {'server': self.proxy}
+
+            self.browser = await self.playwright.chromium.launch(**launch_options)
             
             # Create context with anti-detection settings
             self.context = await self.browser.new_context(
                 user_agent=self.user_agent,
                 viewport={'width': 1920, 'height': 1080},
-                ignore_https_errors=True,
+                ignore_https_errors=not self.verify_ssl,
                 java_script_enabled=True,
                 bypass_csp=True,
+                http_credentials=self.http_credentials,
                 extra_http_headers={
                     'Accept-Language': 'en-US,en;q=0.9',
                     'Accept-Encoding': 'gzip, deflate, br',
@@ -142,12 +172,13 @@ class BrowserManager:
             logger.error(f"Failed to initialize browser: {e}")
             raise
     
-    async def create_page(self) -> Page:
+    async def create_page(self):
         """Create a new page with anti-detection measures"""
         if not self.context:
             await self.initialize()
         
         page = await self.context.new_page()
+        self.page = page
         
         # Additional page-level anti-detection
         await page.evaluate("""
@@ -168,19 +199,23 @@ class BrowserManager:
         try:
             if self.page:
                 await self.page.close()
+                self.page = None
             if self.context:
                 await self.context.close()
+                self.context = None
             if self.browser:
                 await self.browser.close()
+                self.browser = None
             if self.playwright:
                 await self.playwright.stop()
+                self.playwright = None
             
             logger.info("Browser closed successfully")
             
         except Exception as e:
             logger.error(f"Error closing browser: {e}")
     
-    async def wait_for_cloudflare(self, page: Page, timeout: int = 30) -> bool:
+    async def wait_for_cloudflare(self, page, timeout: int = 30) -> bool:
         """
         Wait for Cloudflare challenge to complete
         
@@ -235,7 +270,7 @@ class BrowserManager:
             logger.error(f"Error waiting for Cloudflare: {e}")
             return False
     
-    async def handle_turnstile(self, page: Page, timeout: int = 30) -> bool:
+    async def handle_turnstile(self, page, timeout: int = 30) -> bool:
         """
         Handle Cloudflare Turnstile challenges
         

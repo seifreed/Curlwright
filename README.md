@@ -9,7 +9,7 @@ CurlWright is a Cloudflare bypass tool that leverages Playwright to execute curl
 ## Features
 
 - ✅ **Automatic Cloudflare Bypass** - Handles Cloudflare challenges automatically
-- ✅ **Full Curl Support** - Parse and execute complex curl commands
+- ✅ **Supported Curl Subset** - Parse and execute a focused set of curl commands with browser-backed execution
 - ✅ **Turnstile Support** - Handles Cloudflare Turnstile challenges
 - ✅ **Cookie Management** - Persistent cookie storage and session management
 - ✅ **Modular Architecture** - Clean, maintainable, and extensible codebase
@@ -201,6 +201,53 @@ print(f"URL: {request.url}")
 print(f"Headers: {request.headers}")
 ```
 
+## Curl Support Matrix
+
+CurlWright does not implement the full curl surface. The current support level is:
+
+### Supported
+
+- `URL`
+- `-X`, `--request`
+- `-H`, `--header`
+- `-d`, `--data`
+- `--data-raw`
+- `--data-binary`
+- `--data-urlencode`
+- `-G`, `--get`
+- `-b`, `--cookie`
+- `-u`, `--user`
+- `-L`, `--location`
+- `-k`, `--insecure`
+- `-I`, `--head`
+- `--max-time`
+- `-x`, `--proxy`
+
+### Partial
+
+- `--compressed`
+  Request flow works, but there is no byte-for-byte curl parity guarantee.
+- `-i`, `--include`
+  Available through CurlWright result metadata and CLI output, not as raw curl-formatted wire output.
+- `-s`, `--silent`
+  The parser tolerates it, but CurlWright logging and browser diagnostics are not a strict curl match.
+- `-v`, `--verbose`
+  CLI verbose mode exists, but it is CurlWright-oriented output rather than curl trace parity.
+- `-o`, `--output`
+  Supported by the CurlWright CLI, not by parsing raw curl command output semantics.
+
+### Not Supported
+
+- `-F`, `--form`
+- `-c`, `--cookie-jar`
+- `--connect-timeout`
+- `--referer`
+- `-A`, `--user-agent` inside the raw curl command
+- advanced proxy and auth variants beyond the implemented subset
+- full curl wire-format and stderr parity
+
+If you need strict curl compatibility, treat CurlWright as a browser-backed execution layer for a subset of commands, not as a drop-in replacement for every curl flag.
+
 ## Project Structure
 
 ```
@@ -229,9 +276,39 @@ curlwright/
 
 ## Requirements
 
-- Python 3.13+
+- Python 3.13 or 3.14
 - Playwright
 - Modern browser (Chromium)
+
+## Real Bypass E2E
+
+The default test suite covers parser, packaging, runtime policy, executor wiring, bypass classification, CLI entry points, and wheel installation/import. Real bypass validation against Cloudflare must be run explicitly against a domain you control behind Cloudflare.
+
+Required environment variables:
+
+```bash
+export CURLWRIGHT_E2E_BASE_URL="https://your-protected-origin.example"
+export CURLWRIGHT_E2E_CHALLENGE_URL="https://your-protected-origin.example/challenge"
+export CURLWRIGHT_E2E_TURNSTILE_URL="https://your-protected-origin.example/turnstile"
+export CURLWRIGHT_E2E_BLOCKED_URL="https://your-protected-origin.example/blocked"
+export CURLWRIGHT_E2E_ARTIFACT_DIR="$PWD/.artifacts/cloudflare-e2e"
+export CURLWRIGHT_E2E_COOKIE_FILE="$PWD/.artifacts/cloudflare-e2e/cookies.pkl"
+export CURLWRIGHT_E2E_STATE_FILE="$PWD/.artifacts/cloudflare-e2e/state.json"
+```
+
+Run the real suite with:
+
+```bash
+./venv/bin/python scripts/run_real_bypass_e2e.py
+```
+
+This real suite is intentionally external to the default local test run. It remains pending until you provide a Cloudflare zone or equivalent protected environment that the tests can target.
+
+Recommended target setup:
+- A challenge endpoint that requires Cloudflare browser verification on first access and becomes reachable after clearance.
+- A Turnstile-protected endpoint that returns protected content only after successful verification.
+- A blocked endpoint that should remain blocked so CurlWright can prove failure diagnostics and artifact capture.
+- All three endpoints should live behind the same Cloudflare zone so session reuse can be observed on the second challenge request.
 
 ## Contributing
 

@@ -4,10 +4,13 @@ Logging configuration module for CurlWright
 
 import logging
 import sys
-from typing import Optional
+
+from src.runtime_compat import ensure_supported_python
+
+ensure_supported_python()
 
 
-def setup_logger(name: str, level: Optional[int] = None) -> logging.Logger:
+def setup_logger(name: str, level: int | None = None) -> logging.Logger:
     """
     Setup and configure logger
     

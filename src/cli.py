@@ -3,7 +3,10 @@ Command Line Interface module for CurlWright
 """
 
 import argparse
-from typing import Optional
+
+from src.runtime_compat import ensure_supported_python
+
+ensure_supported_python()
 
 
 class CLI:
@@ -102,6 +105,6 @@ Examples:
         
         return parser
     
-    def parse_arguments(self, args: Optional[list] = None):
+    def parse_arguments(self, args: list[str] | None = None):
         """Parse command line arguments"""
         return self.parser.parse_args(args)

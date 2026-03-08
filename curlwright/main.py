@@ -4,24 +4,54 @@ CurlWright - Main module for package
 """
 
 import sys
-import argparse
 import asyncio
 from pathlib import Path
 
-# Add parent to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+from src.runtime_compat import ensure_supported_python
+from src.core.request_executor import ResponsePayload
 from src.cli import CLI
 from src.core.request_executor import RequestExecutor
 from src.utils.logger import setup_logger
 
+ensure_supported_python()
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 logger = setup_logger(__name__)
 
 
-async def main():
+def _resolve_curl_command(args) -> str:
+    """Resolve the curl command from CLI arguments."""
+    if args.file:
+        return Path(args.file).read_text().strip()
+    if args.curl:
+        return args.curl
+
+    raise ValueError("No curl command provided")
+
+
+def _write_result_output(result: ResponsePayload, output_path: str | None, verbose: bool) -> None:
+    """Render or persist the executor response."""
+    body = str(result['body'])
+    if output_path:
+        Path(output_path).write_text(body)
+        logger.info(f"Response saved to {output_path}")
+        return
+
+    if verbose:
+        print(f"Status: {result['status']}")
+        print(f"Headers: {result['headers']}")
+        print("-" * 50)
+    print(body)
+
+
+async def main() -> None:
     """Main entry point for CurlWright"""
     cli = CLI()
     args = cli.parse_arguments()
+    executor: RequestExecutor | None = None
     
     try:
         # Handle no-gui mode (force headless)
@@ -34,16 +64,7 @@ async def main():
             user_agent=args.user_agent,
             no_gui=args.no_gui
         )
-        
-        # Get curl command
-        curl_command = None
-        if args.file:
-            curl_command = Path(args.file).read_text().strip()
-        elif args.curl:
-            curl_command = args.curl
-        else:
-            logger.error("No curl command provided")
-            sys.exit(1)
+        curl_command = _resolve_curl_command(args)
         
         # Execute request
         result = await executor.execute(
@@ -51,23 +72,14 @@ async def main():
             max_retries=args.retries,
             delay=args.delay
         )
-        
-        # Handle output
-        if args.output:
-            Path(args.output).write_text(result['body'])
-            logger.info(f"Response saved to {args.output}")
-        else:
-            if args.verbose:
-                print(f"Status: {result['status']}")
-                print(f"Headers: {result['headers']}")
-                print("-" * 50)
-            print(result['body'])
+        _write_result_output(result, args.output, args.verbose)
             
     except Exception as e:
         logger.error(f"Error: {e}")
         sys.exit(1)
     finally:
-        await executor.close()
+        if executor is not None:
+            await executor.close()
 
 
 if __name__ == "__main__":

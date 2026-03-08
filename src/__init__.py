@@ -2,6 +2,10 @@
 CurlWright - Cloudflare Bypass Tool
 """
 
-__version__ = "1.0.0"
+from src.runtime_compat import ensure_supported_python
+
+ensure_supported_python()
+
+__version__ = "2.0.0"
 __author__ = "Marc Rivero"
 __email__ = "mriverolopez@gmail.com"

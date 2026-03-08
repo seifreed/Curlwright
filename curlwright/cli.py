@@ -7,14 +7,21 @@ import sys
 import asyncio
 from pathlib import Path
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from src.runtime_compat import ensure_supported_python
+
+ensure_supported_python()
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from curlwright.main import main as curlwright_main
 
-def main():
+
+def main() -> None:
     """Main entry point for the CLI"""
     asyncio.run(curlwright_main())
+
 
 if __name__ == "__main__":
     main()

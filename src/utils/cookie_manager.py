@@ -5,8 +5,14 @@ Cookie management module for handling browser cookies
 import json
 import pickle
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+
+from src.runtime_compat import ensure_supported_python
 from src.utils.logger import setup_logger
+
+ensure_supported_python()
+
+type CookieRecord = dict[str, object]
+type CookieJar = list[CookieRecord]
 
 logger = setup_logger(__name__)
 
@@ -14,7 +20,7 @@ logger = setup_logger(__name__)
 class CookieManager:
     """Manages browser cookies for session persistence"""
     
-    def __init__(self, cookie_file: Optional[str] = None):
+    def __init__(self, cookie_file: str | None = None):
         """
         Initialize cookie manager
         
@@ -23,7 +29,7 @@ class CookieManager:
         """
         self.cookie_file = Path(cookie_file) if cookie_file else Path.home() / '.curlwright' / 'cookies.pkl'
         self.cookie_file.parent.mkdir(parents=True, exist_ok=True)
-        self.cookies: List[Dict[str, Any]] = []
+        self.cookies: CookieJar = []
     
     async def save_cookies(self, context) -> None:
         """
@@ -72,6 +78,10 @@ class CookieManager:
         except Exception as e:
             logger.error(f"Failed to load cookies: {e}")
             return False
+
+    def has_cookies_for_domain(self, domain: str) -> bool:
+        """Return whether the current jar contains cookies for the given domain."""
+        return any(self.get_cookies_for_domain(domain))
     
     def clear_cookies(self) -> None:
         """Clear all stored cookies"""
@@ -124,7 +134,7 @@ class CookieManager:
             logger.error(f"Failed to import cookies: {e}")
             return False
     
-    def get_cookies_for_domain(self, domain: str) -> List[Dict[str, Any]]:
+    def get_cookies_for_domain(self, domain: str) -> CookieJar:
         """
         Get cookies for a specific domain
         
