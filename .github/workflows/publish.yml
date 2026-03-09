@@ -1,13 +1,13 @@
 name: publish-to-pypi
 
 on:
-  release:
-    types:
-      - published
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 concurrency:
-  group: publish-${{ github.event.release.tag_name || github.ref }}
+  group: publish-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -26,6 +26,21 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
+
+      - name: Verify tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          python - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          tag = "${{ github.ref_name }}"
+          version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          expected_tag = f"v{version}"
+          if tag != expected_tag:
+              raise SystemExit(f"Tag {tag!r} does not match project version {expected_tag!r}")
+          print(f"tag-check: {tag} matches pyproject version {version}")
+          PY
 
       - name: Install build tooling
         run: |
@@ -64,4 +79,3 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-
