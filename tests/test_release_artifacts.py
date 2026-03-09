@@ -29,7 +29,9 @@ def test_wheel_installs_and_exports_public_api(tmp_path):
         check=True,
         timeout=120,
     )
-    python_bin = venv_dir / "bin" / "python"
+    scripts_dir = "Scripts" if os.name == "nt" else "bin"
+    python_name = "python.exe" if os.name == "nt" else "python"
+    python_bin = venv_dir / scripts_dir / python_name
     env = os.environ.copy()
     env.pop("PYTHONPATH", None)
 

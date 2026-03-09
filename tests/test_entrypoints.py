@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import runpy
 import subprocess
 import sys
@@ -147,10 +148,10 @@ def test_cli_json_output_contains_meta():
     assert payload["ok"] is True
     assert payload["exit_code"] == 0
     assert payload["response"]["status"] == 200
-    assert payload["meta"]["runtime"]["artifact_dir"].endswith(".artifacts/test-json")
-    assert payload["meta"]["runtime"]["cookie_file"].endswith(".artifacts/test-json/cookies.pkl")
-    assert payload["meta"]["runtime"]["state_file"].endswith(".artifacts/test-json/state.json")
-    assert payload["meta"]["runtime"]["profile_dir"].endswith(".artifacts/test-json/profile")
+    assert os.path.normpath(payload["meta"]["runtime"]["artifact_dir"]) == os.path.normpath(".artifacts/test-json")
+    assert os.path.normpath(payload["meta"]["runtime"]["cookie_file"]) == os.path.normpath(".artifacts/test-json/cookies.pkl")
+    assert os.path.normpath(payload["meta"]["runtime"]["state_file"]) == os.path.normpath(".artifacts/test-json/state.json")
+    assert os.path.normpath(payload["meta"]["runtime"]["profile_dir"]) == os.path.normpath(".artifacts/test-json/profile")
     assert payload["meta"]["attempts"][0]["outcome"] == "success"
 
 

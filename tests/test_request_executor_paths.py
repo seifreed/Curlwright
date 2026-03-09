@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -94,7 +95,7 @@ def test_domain_session_key_and_retry_user_agent_rotation():
     executor._effective_user_agent = first
 
     assert first != second
-    assert executor._get_domain_session_key(request) == f"example.com|http://proxy:8080|{first}|/tmp/curlwright-profile-a"
+    assert executor._get_domain_session_key(request) == f"example.com|http://proxy:8080|{first}|{os.path.normpath('/tmp/curlwright-profile-a')}"
 
 
 def test_pinned_user_agent_disables_rotation():
