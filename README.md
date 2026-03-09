@@ -288,35 +288,6 @@ This separation keeps browser automation and heuristics in infrastructure while 
 
 ---
 
-## CI/CD
-
-### Continuous Integration
-
-GitHub Actions is configured in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) to run tests on:
-
-- Windows x64
-- Windows ARM64
-- Linux x64
-- Linux ARM64
-- macOS Intel
-- macOS Apple Silicon
-
-Coverage is generated in a dedicated Linux job and uploaded to Codecov.
-
-### Publish To PyPI
-
-Publishing is configured in [`.github/workflows/publish.yml`](.github/workflows/publish.yml) and is triggered by GitHub Releases.
-
-The workflow:
-
-1. Builds `sdist` and `wheel`
-2. Validates them with `twine check`
-3. Publishes to PyPI using Trusted Publishing (OIDC)
-
-No `PYPI_TOKEN` secret is required for publish if PyPI Trusted Publisher is configured for this repository.
-
----
-
 ## Requirements
 
 - Python `>=3.13,<3.15`
