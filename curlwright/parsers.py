@@ -1,7 +1,8 @@
 """Public parser exports for the curlwright package."""
 
-from src.runtime_compat import ensure_supported_python
-from src.parsers.curl_parser import CurlParser, CurlRequest
+from curlwright.runtime import ensure_supported_python
+from curlwright.domain import CurlRequest
+from curlwright.infrastructure.parsers import CurlParser
 
 ensure_supported_python()
 

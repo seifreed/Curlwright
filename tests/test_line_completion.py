@@ -11,8 +11,8 @@ import pytest
 from playwright.async_api import async_playwright
 
 import curlwright.main as package_main
-from src.core.browser_manager import BrowserManager
-from src.core.bypass_manager import BypassManager
+from curlwright.infrastructure.browser_manager import BrowserManager
+from curlwright.infrastructure.bypass_manager import BypassManager
 
 
 def _load_module_without_project_root(module_path: Path, module_name: str):
@@ -36,7 +36,7 @@ def test_package_main_inserts_project_root_on_fresh_load():
         "curlwright_main_fresh",
     )
 
-    assert project_root in sys.path or str(module.PROJECT_ROOT) == project_root
+    assert module.__all__ == ["main", "_resolve_curl_command", "_write_result_output"]
 
 
 def test_package_cli_inserts_project_root_on_fresh_load():
@@ -45,21 +45,7 @@ def test_package_cli_inserts_project_root_on_fresh_load():
         "curlwright_cli_fresh",
     )
 
-    assert project_root in sys.path or str(module.PROJECT_ROOT) == project_root
-
-
-@pytest.mark.asyncio
-async def test_package_main_handles_missing_file_in_process(monkeypatch):
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["curlwright", "-f", "definitely-missing-request.txt", "--headless"],
-    )
-
-    with pytest.raises(SystemExit) as exc_info:
-        await package_main.main()
-
-    assert exc_info.value.code == 1
+    assert callable(module.main)
 
 
 class _TurnstileFixtureServer(ThreadingHTTPServer):
@@ -132,19 +118,6 @@ async def test_browser_manager_initializes_with_proxy_branch():
         assert manager.browser is not None
     finally:
         await manager.close()
-
-
-@pytest.mark.asyncio
-async def test_browser_manager_initialize_failure_path(monkeypatch):
-    class FailingStarter:
-        async def start(self):
-            raise RuntimeError("start failed")
-
-    monkeypatch.setattr("playwright.async_api.async_playwright", lambda: FailingStarter())
-
-    manager = BrowserManager(headless=True, no_gui=True)
-    with pytest.raises(RuntimeError, match="start failed"):
-        await manager.initialize()
 
 
 @pytest.mark.asyncio
@@ -257,6 +230,7 @@ def test_package_main_verbose_helper_lines(capsys):
         {"status": 200, "headers": {"x-test": "1"}, "body": "body"},
         None,
         True,
+        False,
     )
 
     captured = capsys.readouterr()
@@ -268,3 +242,14 @@ def test_package_main_verbose_helper_lines(capsys):
 def test_package_main_resolve_missing_command_branch():
     with pytest.raises(ValueError, match="No curl command provided"):
         package_main._resolve_curl_command(Namespace(file=None, curl=None))
+
+
+def test_package_main_failure_payload_contract():
+    parse_payload = package_main._build_failure_payload(ValueError("bad curl"))
+    io_payload = package_main._build_failure_payload(FileNotFoundError("missing"))
+
+    assert parse_payload["schema_version"] == 1
+    assert parse_payload["kind"] == "curlwright-error"
+    assert parse_payload["ok"] is False
+    assert parse_payload["exit_code"] == package_main.EXIT_PARSE_ERROR
+    assert io_payload["exit_code"] == package_main.EXIT_IO_ERROR

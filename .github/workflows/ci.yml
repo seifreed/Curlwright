@@ -1,0 +1,115 @@
+name: curlwright-ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  test-matrix:
+    name: test (${{ matrix.name }})
+    runs-on: ${{ matrix.runs_on }}
+    timeout-minutes: 45
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            runs_on: ubuntu-24.04
+            python_version: "3.13"
+            playwright_install: python -m playwright install --with-deps chromium
+          - name: linux-arm64
+            runs_on: ubuntu-24.04-arm
+            python_version: "3.13"
+            playwright_install: python -m playwright install --with-deps chromium
+          - name: windows-x64
+            runs_on: windows-2025
+            python_version: "3.13"
+            playwright_install: python -m playwright install chromium
+          - name: windows-arm64
+            runs_on: windows-11-arm
+            python_version: "3.13"
+            playwright_install: python -m playwright install chromium
+          - name: macos-intel
+            runs_on: macos-15-intel
+            python_version: "3.13"
+            playwright_install: python -m playwright install chromium
+          - name: macos-arm64
+            runs_on: macos-15
+            python_version: "3.13"
+            playwright_install: python -m playwright install chromium
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python_version }}
+          cache: pip
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" build
+
+      - name: Install Playwright browser
+        run: ${{ matrix.playwright_install }}
+
+      - name: Run test suite
+        run: python -m pytest tests
+
+      - name: Upload runtime artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-artifacts-${{ matrix.name }}
+          path: .artifacts
+          if-no-files-found: ignore
+
+  coverage:
+    name: coverage (linux-x64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" build
+
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
+
+      - name: Run coverage
+        run: python scripts/run_coverage.py
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: seifreed/Curlwright
+
+      - name: Upload runtime artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-artifacts-coverage
+          path: .artifacts
+          if-no-files-found: ignore

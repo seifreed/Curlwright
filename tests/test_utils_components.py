@@ -8,10 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from src.cli import CLI
-from src.utils.cookie_manager import CookieManager
-from src.utils.domain_state import DomainStateStore
-from src.utils.logger import setup_logger
+from curlwright.cli_parser import CLI
+from curlwright.infrastructure.logging import setup_logger
+from curlwright.infrastructure.persistence import CookieManager, DomainStateStore
 
 
 class FakeCookieContext:
@@ -41,6 +40,7 @@ def test_domain_state_store_persists_success_and_failure(tmp_path):
         domain="example.com",
         user_agent="ua",
         proxy=None,
+        profile_dir=str(tmp_path / "profile-a"),
         final_url="https://example.com/protected",
         cookie_names=["cf_clearance", "session"],
         artifact_dir=str(tmp_path / "artifacts"),
@@ -52,6 +52,7 @@ def test_domain_state_store_persists_success_and_failure(tmp_path):
     assert record.last_status == "verified"
     assert record.success_count == 1
     assert record.cookie_names == ["cf_clearance", "session"]
+    assert record.profile_dir == str(tmp_path / "profile-a")
     assert reloaded.is_trusted(domain_key) is True
 
     record.verified_at = time.time() - 7200
@@ -63,6 +64,7 @@ def test_domain_state_store_persists_success_and_failure(tmp_path):
         domain="example.com",
         user_agent="ua",
         proxy=None,
+        profile_dir=str(tmp_path / "profile-a"),
         final_url="https://example.com/failure",
         artifact_dir=str(tmp_path / "failure-artifacts"),
     )
@@ -157,6 +159,19 @@ def test_cli_parses_valid_arguments():
             "--output",
             "result.txt",
             "--verbose",
+            "--json-output",
+            "--sarif-output",
+            "result.sarif",
+            "--cookie-file",
+            "cookies.pkl",
+            "--state-file",
+            "state.json",
+            "--artifact-dir",
+            ".artifacts",
+            "--profile-dir",
+            "browser-profile",
+            "--bypass-attempts",
+            "4",
         ]
     )
 
@@ -168,6 +183,21 @@ def test_cli_parses_valid_arguments():
     assert args.delay == 1
     assert args.output == "result.txt"
     assert args.verbose is True
+    assert args.json_output is True
+    assert args.sarif_output == "result.sarif"
+    assert args.cookie_file == "cookies.pkl"
+    assert args.state_file == "state.json"
+    assert args.artifact_dir == ".artifacts"
+    assert args.profile_dir == "browser-profile"
+    assert args.bypass_attempts == 4
+
+
+def test_cli_supports_disabling_cookie_persistence():
+    args = CLI().parse_arguments(
+        ["-c", "curl https://example.com", "--no-persist-cookies"]
+    )
+
+    assert args.no_persist_cookies is True
 
 
 def test_cli_rejects_missing_required_input():

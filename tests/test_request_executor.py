@@ -1,6 +1,6 @@
-from src.core.request_executor import RequestExecutor
-from src.core.bypass_manager import BypassManager
-from src.parsers.curl_parser import CurlRequest
+from curlwright.domain import CurlRequest
+from curlwright.executor import RequestExecutor
+from curlwright.infrastructure.bypass_manager import BypassManager
 
 
 def test_request_timeout_overrides_executor_default():

@@ -7,7 +7,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 from playwright.async_api import async_playwright
 
-from src.core.bypass_manager import BypassFailure, BypassManager
+from curlwright.domain import BypassFailure
+from curlwright.infrastructure.bypass_manager import BypassManager
 
 
 class _BypassFixtureServer(ThreadingHTTPServer):
@@ -56,8 +57,67 @@ class _BypassFixtureHandler(BaseHTTPRequestHandler):
             self.end_headers()
             return
 
+        if route == "/turnstile-iframe":
+            self._send_html(
+                """
+                <html>
+                  <head><title>Just a moment...</title></head>
+                  <body>
+                    <div class="cf-turnstile"></div>
+                    <input type="hidden" name="cf-turnstile-response" value="" />
+                    <p id="status">Performing security verification</p>
+                    <iframe
+                      src="/turnstile-frame"
+                      style="width: 220px; height: 90px; border: 0;"
+                    ></iframe>
+                  </body>
+                </html>
+                """
+            )
+            return
+
+        if route == "/turnstile-frame":
+            self._send_html(
+                """
+                <html>
+                  <body style="margin:0; display:flex; align-items:center; justify-content:center; height:100vh;">
+                    <button
+                      role="checkbox"
+                      style="width: 160px; height: 50px;"
+                      onclick="
+                        parent.document.querySelector(`input[name='cf-turnstile-response']`).value='token';
+                        parent.document.querySelector('#status').textContent='Verification successful. Waiting for site to respond';
+                        parent.document.querySelector('.cf-turnstile').remove();
+                        setTimeout(() => { parent.location.href='/clear'; }, 100);
+                      "
+                    >Verify</button>
+                  </body>
+                </html>
+                """
+            )
+            return
+
         if route == "/clear":
             self._send_html("<html><body>clear page</body></html>")
+            return
+
+        if route == "/managed-challenge":
+            self._send_html(
+                """
+                <html>
+                  <head>
+                    <title>Just a moment...</title>
+                    <script>
+                      window._cf_chl_opt = { cZone: 'fixture.local' };
+                      setTimeout(() => { window.location.href = '/clear'; }, 250);
+                    </script>
+                  </head>
+                  <body>
+                    <div id="challenge-stage">challenge</div>
+                  </body>
+                </html>
+                """
+            )
             return
 
         self.send_response(404)
@@ -152,6 +212,59 @@ async def test_perform_bypass_reaches_clear_page_after_reload():
 
             assert assessment.outcome == "clear"
             assert "clear content" in assessment.body_excerpt
+            await browser.close()
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_perform_bypass_reaches_clear_page_after_turnstile_iframe_resolution():
+    manager = BypassManager()
+    server, thread = _start_bypass_server(root_mode="clear")
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=True)
+            page = await browser.new_page()
+
+            assessment = await manager.perform_bypass(
+                page=page,
+                target_url=f"http://127.0.0.1:{server.server_port}/turnstile-iframe",
+                timeout_ms=4_000,
+                trusted_session=False,
+                console_events=[],
+            )
+
+            assert assessment.outcome == "clear"
+            assert assessment.final_url.endswith("/clear")
+            assert "clear page" in assessment.body_excerpt
+            await browser.close()
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_perform_bypass_waits_for_managed_challenge_to_finish():
+    manager = BypassManager()
+    server, thread = _start_bypass_server(root_mode="clear")
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=True)
+            page = await browser.new_page()
+
+            assessment = await manager.perform_bypass(
+                page=page,
+                target_url=f"http://127.0.0.1:{server.server_port}/managed-challenge?__cf_chl_rt_tk=test-token",
+                timeout_ms=4_000,
+                trusted_session=False,
+                console_events=[],
+            )
+
+            assert assessment.outcome == "clear"
+            assert assessment.final_url.endswith("/clear")
             await browser.close()
     finally:
         server.shutdown()

@@ -6,7 +6,8 @@ from pathlib import Path
 
 from playwright.async_api import async_playwright
 
-from src.core.bypass_manager import BypassAssessment, BypassManager
+from curlwright.domain import BypassAssessment
+from curlwright.infrastructure.bypass_manager import BypassManager
 
 
 def test_bypass_manager_classifies_blocked_response():
@@ -20,6 +21,24 @@ def test_bypass_manager_classifies_blocked_response():
 
     assert assessment.outcome == "blocked"
     assert "status:403" in assessment.indicators
+
+
+def test_bypass_manager_classifies_extension_configuration_blocks():
+    assessment = BypassManager().assess_response_payload(
+        {
+            "status": 200,
+            "url": "https://example.com/protected",
+            "body": (
+                "<html><title>Just a moment...</title><body>"
+                "Incompatible browser extension or network configuration. "
+                "Your browser extensions or network settings have blocked the security verification process."
+                "</body></html>"
+            ),
+        }
+    )
+
+    assert assessment.outcome == "blocked"
+    assert "block-text-pattern" in assessment.indicators
 
 
 def test_bypass_manager_artifact_naming_and_attempt_strategy():

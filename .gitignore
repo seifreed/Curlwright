@@ -66,6 +66,7 @@ env/
 # Project specific
 cookies.pkl
 .curlwright/
+.artifacts/
 *.log
 response.html
 response.json

@@ -7,10 +7,10 @@ import pytest
 from playwright.async_api import async_playwright
 
 import curlwright
-from src.core.bypass_manager import BypassManager
-from src.core.request_executor import RequestExecutor
-from src.parsers.curl_parser import CurlParser, CurlRequest
-from src.utils.domain_state import DomainBypassState
+from curlwright.domain import CurlRequest, DomainBypassState
+from curlwright.executor import RequestExecutor
+from curlwright.infrastructure.bypass_manager import BypassManager
+from curlwright.infrastructure.parsers import CurlParser
 
 
 class _CookieCaptureServer(ThreadingHTTPServer):
@@ -101,8 +101,8 @@ async def test_request_executor_covers_zero_retry_runtime_guard_and_cookie_branc
             cookies={"session": "abc", "theme": "dark"},
         )
         await executor._ensure_initialized(request, user_agent=executor._get_retry_user_agent(0))
-        payload = await executor._execute_request(request)
-        assert payload["status"] == 200
+        result = await executor._execute_request(request)
+        assert result.response.status == 200
         assert "session=abc" in server.last_cookie_header
         assert "theme=dark" in server.last_cookie_header
     finally:

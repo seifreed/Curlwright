@@ -6,7 +6,7 @@ with full browser capabilities, allowing you to access protected websites seamle
 """
 
 from importlib import import_module
-from src.runtime_compat import ensure_supported_python
+from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
 
@@ -25,10 +25,10 @@ __all__ = [
 
 
 _EXPORT_MAP = {
-    "RequestExecutor": ("src.core.request_executor", "RequestExecutor"),
-    "CurlParser": ("src.parsers.curl_parser", "CurlParser"),
-    "CurlRequest": ("src.parsers.curl_parser", "CurlRequest"),
-    "CookieManager": ("src.utils.cookie_manager", "CookieManager"),
+    "RequestExecutor": ("curlwright.executor", "RequestExecutor"),
+    "CurlParser": ("curlwright.parsers", "CurlParser"),
+    "CurlRequest": ("curlwright.parsers", "CurlRequest"),
+    "CookieManager": ("curlwright.utils", "CookieManager"),
 }
 
 

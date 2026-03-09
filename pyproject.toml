@@ -59,7 +59,10 @@ dev = [
 
 [tool.setuptools]
 package-dir = {"" = "."}
-packages = ["curlwright", "src", "src.core", "src.parsers", "src.utils"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["curlwright*"]
 
 [tool.setuptools.package-data]
 curlwright = ["*.txt", "*.md"]

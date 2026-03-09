@@ -5,24 +5,12 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-TESTS = [
-    "tests/test_public_api.py",
-    "tests/test_curl_parser.py",
-    "tests/test_request_executor.py",
-    "tests/test_utils_components.py",
-    "tests/test_bypass_manager.py",
-    "tests/test_browser_manager.py",
-    "tests/test_bypass_manager_paths.py",
-    "tests/test_core_defensive_paths.py",
-    "tests/test_entrypoints.py",
-    "tests/test_final_line_coverage.py",
-    "tests/test_line_completion.py",
-    "tests/test_request_executor_paths.py",
-]
+TESTS = ["tests"]
 
 
 def _coverage_tracer_paths() -> tuple[Path | None, Path | None]:
@@ -54,11 +42,12 @@ def main() -> int:
             "pytest",
             "-q",
             "--cov=curlwright",
-            "--cov=src",
             "--cov-report=term-missing",
             *TESTS,
         ]
-        return subprocess.run(cmd, cwd=ROOT).returncode
+        env = os.environ.copy()
+        env["COVERAGE_CORE"] = "pytrace"
+        return subprocess.run(cmd, cwd=ROOT, env=env).returncode
     finally:
         if restored:
             _, disabled = _coverage_tracer_paths()

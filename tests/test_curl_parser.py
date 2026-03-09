@@ -1,4 +1,4 @@
-from src.parsers.curl_parser import CurlParser
+from curlwright.infrastructure.parsers import CurlParser
 import pytest
 
 

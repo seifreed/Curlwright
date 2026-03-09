@@ -1,4 +1,4 @@
-"""Runtime compatibility policy for supported Python versions."""
+"""Runtime policy for the public curlwright package."""
 
 import sys
 

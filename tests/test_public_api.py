@@ -1,25 +1,23 @@
 from curlwright import CookieManager, CurlParser, CurlRequest, RequestExecutor, __version__, get_version
+from curlwright.application import RequestExecutor as ApplicationRequestExecutor
+from curlwright.infrastructure.parsers import CurlParser as InfrastructureCurlParser
+from curlwright.infrastructure.persistence import CookieManager as InfrastructureCookieManager
 from curlwright.parsers import CurlParser as ParserModuleExport
 from curlwright.parsers import CurlRequest as RequestModuleExport
 from curlwright.utils import CookieManager as CookieModuleExport
-from src.core.request_executor import RequestExecutor as SourceRequestExecutor
-from src.parsers.curl_parser import CurlParser as SourceCurlParser
-from src.parsers.curl_parser import CurlRequest as SourceCurlRequest
-from src.runtime_compat import ensure_supported_python, is_supported_python, supported_python_message
-from src.utils.cookie_manager import CookieManager as SourceCookieManager
+from curlwright.runtime import ensure_supported_python, is_supported_python, supported_python_message
 
 
 def test_public_exports_match_documented_api():
-    assert RequestExecutor is SourceRequestExecutor
-    assert CurlParser is SourceCurlParser
-    assert CurlRequest is SourceCurlRequest
-    assert CookieManager is SourceCookieManager
+    assert issubclass(RequestExecutor, ApplicationRequestExecutor)
+    assert CurlParser is InfrastructureCurlParser
+    assert CookieManager is InfrastructureCookieManager
 
 
 def test_submodule_exports_match_documented_api():
-    assert ParserModuleExport is SourceCurlParser
-    assert RequestModuleExport is SourceCurlRequest
-    assert CookieModuleExport is SourceCookieManager
+    assert ParserModuleExport is InfrastructureCurlParser
+    assert RequestModuleExport is CurlRequest
+    assert CookieModuleExport is InfrastructureCookieManager
 
 
 def test_package_version_is_consistent():

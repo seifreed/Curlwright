@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.core.browser_manager import BrowserManager
-from src.core.bypass_manager import BypassManager
+from curlwright.infrastructure.browser_manager import BrowserManager
+from curlwright.infrastructure.bypass_manager import BypassManager
 
 
 class FailingLocator:

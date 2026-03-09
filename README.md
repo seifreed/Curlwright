@@ -1,339 +1,363 @@
-# CurlWright
+<p align="center">
+  <img src="https://img.shields.io/badge/CurlWright-Cloudflare%20Bypass-blue?style=for-the-badge" alt="CurlWright">
+</p>
 
-[![Python Version](https://img.shields.io/pypi/pyversions/curlwright)](https://pypi.org/project/curlwright/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PyPI version](https://img.shields.io/pypi/v/curlwright)](https://pypi.org/project/curlwright/)
+<h1 align="center">CurlWright</h1>
 
-CurlWright is a Cloudflare bypass tool that leverages Playwright to execute curl commands with full browser capabilities, allowing you to access protected websites seamlessly.
+<p align="center">
+  <strong>Execute curl requests through a real Playwright browser when anti-bot protection gets in the way</strong>
+</p>
 
-## Features
+<p align="center">
+  <a href="https://pypi.org/project/curlwright/"><img src="https://img.shields.io/pypi/v/curlwright?style=flat-square&logo=pypi&logoColor=white" alt="PyPI Version"></a>
+  <a href="https://pypi.org/project/curlwright/"><img src="https://img.shields.io/pypi/pyversions/curlwright?style=flat-square&logo=python&logoColor=white" alt="Python Versions"></a>
+  <a href="https://github.com/seifreed/Curlwright/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License"></a>
+  <a href="https://github.com/seifreed/Curlwright/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/seifreed/Curlwright/ci.yml?style=flat-square&logo=github&label=CI" alt="CI Status"></a>
+  <img src="https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square" alt="Coverage">
+</p>
 
-- ✅ **Automatic Cloudflare Bypass** - Handles Cloudflare challenges automatically
-- ✅ **Supported Curl Subset** - Parse and execute a focused set of curl commands with browser-backed execution
-- ✅ **Turnstile Support** - Handles Cloudflare Turnstile challenges
-- ✅ **Cookie Management** - Persistent cookie storage and session management
-- ✅ **Modular Architecture** - Clean, maintainable, and extensible codebase
-- ✅ **Retry Mechanism** - Automatic retries with configurable delays
-- ✅ **Headless & Visual Mode** - Run in background or watch the browser
-- ✅ **Server Mode** - Run on servers without X11/GUI requirements
+<p align="center">
+  <a href="https://github.com/seifreed/Curlwright/stargazers"><img src="https://img.shields.io/github/stars/seifreed/Curlwright?style=flat-square" alt="GitHub Stars"></a>
+  <a href="https://github.com/seifreed/Curlwright/issues"><img src="https://img.shields.io/github/issues/seifreed/Curlwright?style=flat-square" alt="GitHub Issues"></a>
+  <a href="https://buymeacoffee.com/seifreed"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-yellow?style=flat-square&logo=buy-me-a-coffee&logoColor=white" alt="Buy Me a Coffee"></a>
+</p>
+
+---
+
+## Overview
+
+**CurlWright** is a Python tool that takes a curl command, opens a real Chromium browser through Playwright, resolves Cloudflare and similar browser-side friction, and returns the final HTTP response in a form that still feels close to curl-driven workflows.
+
+It is useful when a plain HTTP client is not enough because the target requires browser execution, JavaScript, cookies, challenge handling, or a persisted trusted session.
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Browser-backed curl execution** | Parse a curl command and execute it through Playwright |
+| **Cloudflare challenge handling** | Detect and progress browser-side verification flows |
+| **Turnstile support** | Includes dedicated handling for Turnstile-style flows |
+| **Trusted session reuse** | Persist per-domain trust state and cookies between runs |
+| **JSON and SARIF outputs** | Machine-readable output for automation and CI/security tooling |
+| **Headless and server mode** | Works in local desktop mode or with `--no-gui` in CI/VPS environments |
+| **Python library mode** | Use as a CLI or from Python code |
+| **Clean layered architecture** | Explicit `domain`, `application`, `infrastructure`, and `interfaces` layers |
+
+### Supported curl Inputs
+
+```text
+Methods       -X/--request, -I/--head, -G/--get
+Headers       -H/--header
+Body          -d/--data, --data-raw, --data-binary, --data-urlencode
+Cookies       -b/--cookie
+Auth          -u/--user
+Network       -x/--proxy, -L/--location, -k/--insecure, --max-time
+Input Forms   Direct command (-c) or file (-f)
+```
+
+---
 
 ## Installation
 
-### From PyPI
+### From PyPI (Recommended)
 
 ```bash
 pip install curlwright
+python -m playwright install chromium
 ```
 
 ### From Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/seifreed/Curlwright.git
 cd Curlwright
-
-# Install in development mode
-pip install -e .
-
-# Install Playwright browsers
-playwright install chromium
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -e ".[dev]"
+python -m playwright install chromium
 ```
+
+---
 
 ## Quick Start
 
-### As a Command Line Tool
-
 ```bash
-# Direct curl command
+# Execute a curl command directly
 curlwright -c "curl https://example.com"
 
-# From file
+# Read the curl command from a file
 curlwright -f request.txt
 
-# With custom options
-curlwright -c "curl https://example.com" --headless --timeout 60 --retries 5
+# Emit structured JSON for automation
+curlwright -f request.txt --json-output
 ```
 
-### As a Python Library
+---
 
-```python
-import asyncio
-from curlwright import RequestExecutor
+## Usage
 
-async def main():
-    executor = RequestExecutor(headless=True)
-    
-    curl_command = 'curl -H "User-Agent: Custom" https://example.com'
-    result = await executor.execute(curl_command)
-    
-    print(f"Status: {result['status']}")
-    print(f"Body: {result['body']}")
-    
-    await executor.close()
-
-asyncio.run(main())
-```
-
-## Command Line Options
-
-```
-usage: curlwright [-h] (-c CURL | -f FILE) [--headless] [--no-gui] [--user-agent USER_AGENT]
-                  [--timeout TIMEOUT] [--retries RETRIES] [--delay DELAY]
-                  [-o OUTPUT] [-v]
-
-Bypass Cloudflare protection using Playwright and execute curl commands
-
-Required Arguments:
-  -c CURL, --curl CURL        Curl command to execute
-  -f FILE, --file FILE        File containing curl command
-
-Browser Options:
-  --headless                   Run browser in headless mode
-  --no-gui                     Run in server mode without X11/display requirement (implies --headless)
-  --user-agent USER_AGENT      Custom user agent string
-  --timeout TIMEOUT            Request timeout in seconds (default: 30)
-
-Retry Options:
-  --retries RETRIES           Number of retries on failure (default: 3)
-  --delay DELAY               Delay between retries in seconds (default: 5)
-
-Output Options:
-  -o OUTPUT, --output OUTPUT   Save response to file
-  -v, --verbose               Verbose output
-```
-
-## Examples
-
-### Simple GET Request
+### Command Line Interface
 
 ```bash
+# Basic request
 curlwright -c "curl https://httpbin.org/get"
+
+# Save the response body to a file
+curlwright -f request.txt -o response.html
+
+# Server/CI mode
+curlwright -f request.txt --no-gui --json-output
+
+# Persist diagnostics for failures
+curlwright -f request.txt --artifact-dir .artifacts/run-1 --sarif-output report.sarif
+
+# Increase retries and timeout
+curlwright -c "curl https://target.example" --timeout 60 --retries 5 --delay 3
 ```
 
-### POST Request with JSON Data
+### Available Options
 
-```bash
-curlwright -c 'curl -X POST -H "Content-Type: application/json" -d "{\"key\":\"value\"}" https://httpbin.org/post'
+| Option | Description |
+|--------|-------------|
+| `-c, --curl` | Curl command to execute |
+| `-f, --file` | File containing the curl command |
+| `--headless` | Run Chromium headless |
+| `--no-gui` | Server-oriented mode without display requirements |
+| `--user-agent` | Override the browser user agent |
+| `--timeout` | Request timeout in seconds |
+| `--cookie-file` | Override cookie persistence path |
+| `--state-file` | Override trusted-session state path |
+| `--artifact-dir` | Directory for diagnostics, screenshots, HTML and logs |
+| `--profile-dir` | Override the persistent Chromium profile directory |
+| `--no-persist-cookies` | Disable automatic cookie load/save |
+| `--bypass-attempts` | Challenge-resolution attempts per request |
+| `--retries` | Retry count after failures |
+| `--delay` | Delay between retries |
+| `-o, --output` | Save the rendered response output to a file |
+| `-v, --verbose` | Print a runtime execution summary |
+| `--json-output` | Emit the stable JSON contract |
+| `--sarif-output` | Write a SARIF 2.1.0 report |
+
+### Output Contracts
+
+`--json-output` emits a stable machine-readable structure:
+
+```json
+{
+  "schema_version": 1,
+  "kind": "curlwright-result",
+  "ok": true,
+  "exit_code": 0,
+  "response": {
+    "status": 200,
+    "url": "https://example.com/",
+    "headers": {},
+    "body": "..."
+  },
+  "meta": {}
+}
 ```
 
-### Request with Headers and Authentication
+Failure JSON includes `error`, `error_type`, `exit_code`, and for bypass failures also `artifact_dir` plus an `assessment` block.
 
-```bash
-curlwright -c 'curl -H "Authorization: Bearer TOKEN" -H "Accept: application/json" https://api.example.com/data'
-```
+---
 
-### Using a Request File
-
-Create a file `request.txt`:
-```
-curl -X GET \
-  -H "User-Agent: MyApp/1.0" \
-  -H "Accept: application/json" \
-  -b "session=abc123" \
-  https://protected.example.com/api/data
-```
-
-Then execute:
-```bash
-curlwright -f request.txt -o response.json
-```
-
-### Server Mode (No GUI/X11)
-
-For running on servers without display support:
-
-```bash
-# Run on a VPS or container without X11
-curlwright -c "curl https://api.example.com/data" --no-gui
-
-# Process API requests on a headless server
-curlwright -f api_request.txt --no-gui -o result.json
-
-# Use in CI/CD pipelines
-curlwright -c "curl https://protected-site.com" --no-gui --timeout 60
-```
-
-The `--no-gui` flag is optimized for server environments and includes:
-- No X11/display requirement
-- Reduced memory footprint
-- Disabled GPU acceleration
-- Optimized for containerized environments (Docker, Kubernetes)
-- Suitable for VPS, cloud servers, and CI/CD pipelines
-
-## Python API
+## Python Library
 
 ### Basic Usage
 
 ```python
+import asyncio
+
 from curlwright import RequestExecutor
 
-executor = RequestExecutor(headless=True, timeout=30)
-result = await executor.execute('curl https://example.com')
+
+async def main() -> None:
+    executor = RequestExecutor(headless=True, timeout=30)
+    result = await executor.execute('curl -H "Accept: application/json" https://httpbin.org/get')
+
+    print(result["status"])
+    print(result["url"])
+    print(result["body"][:120])
+
+    await executor.close()
+
+
+asyncio.run(main())
 ```
 
-### Advanced Usage with Cookie Management
+### Parse curl Before Execution
 
 ```python
-from curlwright import RequestExecutor
-from curlwright.utils import CookieManager
-
-# Initialize with cookie persistence
-cookie_manager = CookieManager('cookies.pkl')
-executor = RequestExecutor(headless=False)
-
-# Execute request
-result = await executor.execute('curl https://example.com')
-
-# Save cookies for next session
-await cookie_manager.save_cookies(executor.browser_manager.context)
-```
-
-### Parsing Curl Commands
-
-```python
-from curlwright.parsers import CurlParser
+from curlwright import CurlParser
 
 parser = CurlParser()
 request = parser.parse('curl -X POST -H "Content-Type: application/json" https://api.example.com')
 
-print(f"Method: {request.method}")
-print(f"URL: {request.url}")
-print(f"Headers: {request.headers}")
+print(request.method)
+print(request.url)
+print(request.headers)
 ```
 
-## Curl Support Matrix
+### Cookie Persistence
 
-CurlWright does not implement the full curl surface. The current support level is:
+```python
+import asyncio
 
-### Supported
+from curlwright import RequestExecutor
+from curlwright.utils import CookieManager
 
-- `URL`
-- `-X`, `--request`
-- `-H`, `--header`
-- `-d`, `--data`
-- `--data-raw`
-- `--data-binary`
-- `--data-urlencode`
-- `-G`, `--get`
-- `-b`, `--cookie`
-- `-u`, `--user`
-- `-L`, `--location`
-- `-k`, `--insecure`
-- `-I`, `--head`
-- `--max-time`
-- `-x`, `--proxy`
 
-### Partial
+async def main() -> None:
+    cookies = CookieManager("cookies.pkl")
+    executor = RequestExecutor(headless=True, cookie_file="cookies.pkl")
+    result = await executor.execute("curl https://example.com")
+    print(result["status"])
+    await executor.close()
 
-- `--compressed`
-  Request flow works, but there is no byte-for-byte curl parity guarantee.
-- `-i`, `--include`
-  Available through CurlWright result metadata and CLI output, not as raw curl-formatted wire output.
-- `-s`, `--silent`
-  The parser tolerates it, but CurlWright logging and browser diagnostics are not a strict curl match.
-- `-v`, `--verbose`
-  CLI verbose mode exists, but it is CurlWright-oriented output rather than curl trace parity.
-- `-o`, `--output`
-  Supported by the CurlWright CLI, not by parsing raw curl command output semantics.
 
-### Not Supported
-
-- `-F`, `--form`
-- `-c`, `--cookie-jar`
-- `--connect-timeout`
-- `--referer`
-- `-A`, `--user-agent` inside the raw curl command
-- advanced proxy and auth variants beyond the implemented subset
-- full curl wire-format and stderr parity
-
-If you need strict curl compatibility, treat CurlWright as a browser-backed execution layer for a subset of commands, not as a drop-in replacement for every curl flag.
-
-## Project Structure
-
+asyncio.run(main())
 ```
+
+---
+
+## Examples
+
+### API Request Through A Browser Session
+
+```bash
+curlwright -c 'curl -H "Authorization: Bearer TOKEN" https://api.example.com/data' --json-output
+```
+
+### Request File
+
+Create `request.txt`:
+
+```bash
+curl -X GET \
+  -H "Accept: application/json" \
+  -H "User-Agent: Analyst/1.0" \
+  -b "session=abc123" \
+  https://protected.example.com/api/data
+```
+
+Run it:
+
+```bash
+curlwright -f request.txt -o response.json
+```
+
+### CI-Friendly Execution
+
+```bash
+mkdir -p .artifacts/job-1
+
+curlwright \
+  -f request.txt \
+  --no-gui \
+  --json-output \
+  --sarif-output .artifacts/job-1/curlwright.sarif \
+  --artifact-dir .artifacts/job-1 \
+  --state-file .artifacts/job-1/state.json \
+  --cookie-file .artifacts/job-1/cookies.pkl \
+  > .artifacts/job-1/result.json
+```
+
+### Headless Retry-Tuned Request
+
+```bash
+curlwright -c "curl https://target.example" --headless --timeout 90 --retries 5 --delay 2
+```
+
+---
+
+## Architecture
+
+The active codebase follows an explicit layered structure:
+
+```text
 curlwright/
-├── curlwright.py          # CLI entry point
-├── requirements.txt        # Project dependencies
-├── setup.py               # Package configuration
-├── LICENSE                # MIT License
-├── README.md              # Documentation
-├── pyproject.toml         # Modern Python packaging
-└── src/
-    ├── __init__.py        # Package initialization
-    ├── cli.py             # Command line interface
-    ├── core/
-    │   ├── __init__.py
-    │   ├── browser_manager.py    # Playwright browser management
-    │   └── request_executor.py   # Request execution logic
-    ├── parsers/
-    │   ├── __init__.py
-    │   └── curl_parser.py        # Curl command parser
-    └── utils/
-        ├── __init__.py
-        ├── logger.py              # Logging configuration
-        └── cookie_manager.py      # Cookie management
+  domain/           Pure models, policies and ports
+  application/      Use cases and orchestration
+  infrastructure/   Playwright, persistence and parser adapters
+  interfaces/       CLI, JSON and SARIF presenters
+  bootstrap.py      Composition root
 ```
+
+This separation keeps browser automation and heuristics in infrastructure while the policy and use-case flow stay isolated from Playwright details.
+
+---
+
+## CI/CD
+
+### Continuous Integration
+
+GitHub Actions is configured in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) to run tests on:
+
+- Windows x64
+- Windows ARM64
+- Linux x64
+- Linux ARM64
+- macOS Intel
+- macOS Apple Silicon
+
+Coverage is generated in a dedicated Linux job and uploaded to Codecov.
+
+### Publish To PyPI
+
+Publishing is configured in [`.github/workflows/publish.yml`](.github/workflows/publish.yml) and is triggered by GitHub Releases.
+
+The workflow:
+
+1. Builds `sdist` and `wheel`
+2. Validates them with `twine check`
+3. Publishes to PyPI using Trusted Publishing (OIDC)
+
+No `PYPI_TOKEN` secret is required for publish if PyPI Trusted Publisher is configured for this repository.
+
+---
 
 ## Requirements
 
-- Python 3.13 or 3.14
-- Playwright
-- Modern browser (Chromium)
+- Python `>=3.13,<3.15`
+- Playwright Chromium installed via `python -m playwright install chromium`
+- See [`pyproject.toml`](pyproject.toml) for the full package metadata and dependency declarations
 
-## Real Bypass E2E
-
-The default test suite covers parser, packaging, runtime policy, executor wiring, bypass classification, CLI entry points, and wheel installation/import. Real bypass validation against Cloudflare must be run explicitly against a domain you control behind Cloudflare.
-
-Required environment variables:
-
-```bash
-export CURLWRIGHT_E2E_BASE_URL="https://your-protected-origin.example"
-export CURLWRIGHT_E2E_CHALLENGE_URL="https://your-protected-origin.example/challenge"
-export CURLWRIGHT_E2E_TURNSTILE_URL="https://your-protected-origin.example/turnstile"
-export CURLWRIGHT_E2E_BLOCKED_URL="https://your-protected-origin.example/blocked"
-export CURLWRIGHT_E2E_ARTIFACT_DIR="$PWD/.artifacts/cloudflare-e2e"
-export CURLWRIGHT_E2E_COOKIE_FILE="$PWD/.artifacts/cloudflare-e2e/cookies.pkl"
-export CURLWRIGHT_E2E_STATE_FILE="$PWD/.artifacts/cloudflare-e2e/state.json"
-```
-
-Run the real suite with:
-
-```bash
-./venv/bin/python scripts/run_real_bypass_e2e.py
-```
-
-This real suite is intentionally external to the default local test run. It remains pending until you provide a Cloudflare zone or equivalent protected environment that the tests can target.
-
-Recommended target setup:
-- A challenge endpoint that requires Cloudflare browser verification on first access and becomes reachable after clearance.
-- A Turnstile-protected endpoint that returns protected content only after successful verification.
-- A blocked endpoint that should remain blocked so CurlWright can prove failure diagnostics and artifact capture.
-- All three endpoints should live behind the same Cloudflare zone so session reuse can be observed on the second challenge request.
+---
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome. If you want to change behavior, add support for more curl flags, or improve challenge handling, open an issue or send a pull request.
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create your branch: `git checkout -b feature/my-change`
+3. Run the test suite
+4. Commit your changes
+5. Push the branch
+6. Open a pull request
+
+---
+
+## Support the Project
+
+If CurlWright is useful in your workflows, you can support the project here:
+
+<a href="https://buymeacoffee.com/seifreed" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
+</a>
+
+---
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
-## Author
+**Attribution**
+- Author: **Marc Rivero** | [@seifreed](https://github.com/seifreed)
+- Repository: [github.com/seifreed/Curlwright](https://github.com/seifreed/Curlwright)
 
-**Marc Rivero** | [mriverolopez@gmail.com](mailto:mriverolopez@gmail.com)
+---
 
-GitHub: [https://github.com/seifreed/Curlwright](https://github.com/seifreed/Curlwright)
-
-## Disclaimer
-
-This tool is for educational and testing purposes only. Always respect website terms of service and use responsibly. The authors are not responsible for any misuse or damage caused by this tool.
-
-## Support
-
-If you encounter any issues or have questions, please [open an issue](https://github.com/seifreed/Curlwright/issues) on GitHub.
+<p align="center">
+  <sub>Built for browser-backed automation and resilient protected-request workflows</sub>
+</p>

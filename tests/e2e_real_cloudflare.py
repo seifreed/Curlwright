@@ -13,8 +13,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.core.bypass_manager import BypassFailure
-from src.core.request_executor import RequestExecutor
+from curlwright.domain import BypassFailure
+from curlwright.executor import RequestExecutor
 
 
 @dataclass

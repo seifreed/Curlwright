@@ -6,9 +6,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from src.core.bypass_manager import BypassFailure
-from src.core.request_executor import RequestExecutor
-from src.parsers.curl_parser import CurlRequest
+from curlwright.domain import CurlRequest
+from curlwright.errors import BypassFailure
+from curlwright.executor import RequestExecutor
 
 
 class _ExecutorFixtureServer(ThreadingHTTPServer):
@@ -86,7 +86,7 @@ def _start_executor_server():
 
 
 def test_domain_session_key_and_retry_user_agent_rotation():
-    executor = RequestExecutor()
+    executor = RequestExecutor(profile_dir="/tmp/curlwright-profile-a")
     request = CurlRequest(url="https://example.com/data", proxy="http://proxy:8080")
 
     first = executor._get_retry_user_agent(0)
@@ -94,7 +94,7 @@ def test_domain_session_key_and_retry_user_agent_rotation():
     executor._effective_user_agent = first
 
     assert first != second
-    assert executor._get_domain_session_key(request) == f"example.com|http://proxy:8080|{first}"
+    assert executor._get_domain_session_key(request) == f"example.com|http://proxy:8080|{first}|/tmp/curlwright-profile-a"
 
 
 def test_pinned_user_agent_disables_rotation():
@@ -108,6 +108,7 @@ def test_has_trusted_session_requires_state_and_cookie_presence(tmp_path):
     executor = RequestExecutor(
         cookie_file=str(tmp_path / "cookies.pkl"),
         bypass_state_file=str(tmp_path / "state.json"),
+        profile_dir=str(tmp_path / "profile"),
     )
     request = CurlRequest(url="https://example.com/data")
 
@@ -119,6 +120,7 @@ def test_has_trusted_session_requires_state_and_cookie_presence(tmp_path):
         domain="example.com",
         user_agent=executor._effective_user_agent,
         proxy=None,
+        profile_dir=str(tmp_path / "profile"),
         final_url=request.url,
         cookie_names=["session"],
         artifact_dir=None,
@@ -134,6 +136,7 @@ def test_has_trusted_session_returns_false_when_cookie_persistence_is_disabled(t
     executor = RequestExecutor(
         persist_cookies=False,
         bypass_state_file=str(tmp_path / "state.json"),
+        profile_dir=str(tmp_path / "profile"),
     )
     request = CurlRequest(url="https://example.com/data")
     domain_key = executor._get_domain_session_key(request)
@@ -143,6 +146,7 @@ def test_has_trusted_session_returns_false_when_cookie_persistence_is_disabled(t
         domain="example.com",
         user_agent=executor._effective_user_agent,
         proxy=None,
+        profile_dir=str(tmp_path / "profile"),
         final_url=request.url,
         cookie_names=["session"],
         artifact_dir=None,
@@ -153,7 +157,7 @@ def test_has_trusted_session_returns_false_when_cookie_persistence_is_disabled(t
 
 @pytest.mark.asyncio
 async def test_reset_runtime_state_clears_initialized_browser():
-    executor = RequestExecutor(headless=True, no_gui=True)
+    executor = RequestExecutor(headless=True, no_gui=True, profile_dir=".artifacts/test-reset-profile")
     request = CurlRequest(url="https://example.com")
 
     await executor._ensure_initialized(request, user_agent=executor._get_retry_user_agent(0))
@@ -169,7 +173,7 @@ async def test_reset_runtime_state_clears_initialized_browser():
 
 @pytest.mark.asyncio
 async def test_ensure_initialized_reuses_matching_signature_and_rebuilds_on_change():
-    executor = RequestExecutor(headless=True, no_gui=True)
+    executor = RequestExecutor(headless=True, no_gui=True, profile_dir=".artifacts/test-reuse-profile")
     request = CurlRequest(url="https://example.com")
     auth_request = CurlRequest(url="https://example.com", auth=("alice", "secret"))
 
@@ -191,17 +195,18 @@ async def test_ensure_initialized_reuses_matching_signature_and_rebuilds_on_chan
 @pytest.mark.asyncio
 async def test_perform_fetch_request_supports_head_without_body():
     server, thread = _start_executor_server()
-    executor = RequestExecutor(headless=True, no_gui=True)
+    executor = RequestExecutor(headless=True, no_gui=True, profile_dir=".artifacts/test-head-profile")
     request = CurlRequest(url=f"http://127.0.0.1:{server.server_port}/head", method="HEAD")
 
     try:
         await executor._ensure_initialized(request, user_agent=executor._get_retry_user_agent(0))
         assert executor.browser_manager is not None
         page = await executor.browser_manager.create_page()
+        await page.goto(f"http://127.0.0.1:{server.server_port}/json", wait_until="domcontentloaded")
         payload = await executor._perform_fetch_request(page, request, timeout_ms=2_000)
 
-        assert payload["status"] == 200
-        assert payload["body"] == ""
+        assert payload.status == 200
+        assert payload.body == ""
         await page.close()
     finally:
         await executor.close()
@@ -217,20 +222,81 @@ async def test_execute_request_marks_success_for_clear_response(tmp_path):
         no_gui=True,
         cookie_file=str(tmp_path / "cookies.pkl"),
         bypass_state_file=str(tmp_path / "state.json"),
+        profile_dir=str(tmp_path / "profile"),
     )
     request = CurlRequest(url=f"http://127.0.0.1:{server.server_port}/json")
 
     try:
         await executor._ensure_initialized(request, user_agent=executor._get_retry_user_agent(0))
-        payload = await executor._execute_request(request)
+        result = await executor._execute_request(request)
 
         domain_key = executor._get_domain_session_key(request)
         state = executor.domain_state_store.get(domain_key)
 
-        assert payload["status"] == 200
+        assert result.response.status == 200
         assert state is not None
         assert state.last_status == "verified"
         assert state.success_count == 1
+        assert state.profile_dir == str(tmp_path / "profile")
+    finally:
+        await executor.close()
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_execute_returns_runtime_metadata(tmp_path):
+    server, thread = _start_executor_server()
+    executor = RequestExecutor(
+        headless=True,
+        no_gui=True,
+        cookie_file=str(tmp_path / "cookies.pkl"),
+        bypass_state_file=str(tmp_path / "state.json"),
+        artifact_dir=str(tmp_path / "artifacts"),
+        bypass_attempts=4,
+        profile_dir=str(tmp_path / "profile"),
+    )
+
+    try:
+        result = await executor.execute(
+            f"curl http://127.0.0.1:{server.server_port}/json",
+            max_retries=2,
+            delay=0,
+        )
+
+        meta = result["meta"]
+        assert meta["request"]["method"] == "GET"
+        assert meta["runtime"]["persistent_profile"] is True
+        assert meta["runtime"]["profile_dir"] == str(tmp_path / "profile")
+        assert meta["runtime"]["persist_cookies"] is True
+        assert meta["runtime"]["bypass_attempts"] == 4
+        assert meta["runtime"]["max_retries"] == 2
+        assert meta["state"]["domain_key"].startswith("127.0.0.1|direct|")
+        assert len(meta["attempts"]) == 1
+        assert meta["attempts"][0]["outcome"] == "success"
+    finally:
+        await executor.close()
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_human_warmup_visits_base_url_before_bypass(tmp_path):
+    server, thread = _start_executor_server()
+    executor = RequestExecutor(
+        headless=True,
+        no_gui=True,
+        profile_dir=str(tmp_path / "profile"),
+    )
+    request = CurlRequest(url=f"http://127.0.0.1:{server.server_port}/json")
+
+    try:
+        await executor._ensure_initialized(request, user_agent=executor._get_retry_user_agent(0))
+        assert executor.browser_manager is not None
+        page = await executor.browser_manager.create_page()
+        await executor._warm_up_page(page, request, timeout_ms=2_000, console_events=[])
+        assert page.url == f"http://127.0.0.1:{server.server_port}/"
+        await page.close()
     finally:
         await executor.close()
         server.shutdown()
