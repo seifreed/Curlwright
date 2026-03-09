@@ -10,7 +10,7 @@ from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
 
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 __author__ = "Marc Rivero"
 __email__ = "mriverolopez@gmail.com"
 __license__ = "MIT"

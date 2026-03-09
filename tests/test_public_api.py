@@ -21,7 +21,7 @@ def test_submodule_exports_match_documented_api():
 
 
 def test_package_version_is_consistent():
-    assert __version__ == "2.0.0"
+    assert __version__ == "2.0.1"
     assert get_version() == __version__
 
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "curlwright"
-version = "2.0.0"
+version = "2.0.1"
 description = "Cloudflare bypass tool using Playwright for curl requests"
 readme = "README.md"
 authors = [
