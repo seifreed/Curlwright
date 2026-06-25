@@ -3,20 +3,21 @@ from __future__ import annotations
 import json
 import os
 import threading
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 
 import pytest
 
 from curlwright.domain import CurlRequest
 from curlwright.errors import BypassFailure
 from curlwright.executor import RequestExecutor
+from tests.helpers import BaseFixtureHandler
 
 
 class _ExecutorFixtureServer(ThreadingHTTPServer):
     pass
 
 
-class _ExecutorFixtureHandler(BaseHTTPRequestHandler):
+class _ExecutorFixtureHandler(BaseFixtureHandler):
     def do_GET(self):
         route = self.path.split("?", 1)[0]
         accept = self.headers.get("Accept", "")
@@ -50,33 +51,6 @@ class _ExecutorFixtureHandler(BaseHTTPRequestHandler):
             return
         self.send_response(404)
         self.end_headers()
-
-    def log_message(self, format, *args):
-        return
-
-    def _send_html(self, body: str, status: int = 200):
-        encoded = body.encode()
-        self.send_response(status)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
-
-    def _send_text(self, body: str, status: int = 200):
-        encoded = body.encode()
-        self.send_response(status)
-        self.send_header("Content-Type", "text/plain; charset=utf-8")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
-
-    def _send_json(self, payload: dict[str, object]):
-        encoded = json.dumps(payload).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
 
 
 def _start_executor_server():
