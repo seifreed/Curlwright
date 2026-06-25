@@ -15,12 +15,6 @@ type QueryPairs = list[tuple[str, str]]
 class CurlParser:
     """Parser for curl commands."""
 
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.request = None
-
     def parse(self, curl_command: str) -> CurlRequest:
         curl_command = curl_command.strip()
         curl_command = curl_command.replace("\\\n", " ")
@@ -115,7 +109,6 @@ class CurlParser:
                 request.data = None
             request.url = self._append_query_pairs(request.url, query_pairs)
 
-        self.request = request
         return request
 
     def _parse_header(self, header_string: str, request: CurlRequest):
@@ -163,7 +156,4 @@ class CurlParser:
         return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, updated_query, parsed.fragment))
 
     def parse_from_file(self, file_path: str) -> CurlRequest:
-        curl_command = Path(file_path).read_text().strip()
-        curl_command = curl_command.replace("\\\n", " ")
-        curl_command = curl_command.replace("\n", " ")
-        return self.parse(curl_command)
+        return self.parse(Path(file_path).read_text())
