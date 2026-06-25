@@ -1,6 +1,6 @@
 from curlwright.domain import CurlRequest
 from curlwright.executor import RequestExecutor
-from curlwright.infrastructure.bypass_manager import BypassManager
+from curlwright.infrastructure.protection_runtime import PlaywrightPageProbe
 
 
 def test_request_timeout_overrides_executor_default():
@@ -73,7 +73,7 @@ def test_cookie_persistence_is_enabled_by_default(tmp_path):
 
 
 def test_cloudflare_interstitial_body_is_not_classified_as_clear():
-    assessment = BypassManager().assess_response_payload(
+    assessment = PlaywrightPageProbe().assess_response_payload(
         {
             "status": 200,
             "url": "https://cloudflarechallenge.com/",

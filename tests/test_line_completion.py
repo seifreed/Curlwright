@@ -13,7 +13,10 @@ from playwright.async_api import async_playwright
 import curlwright.main as package_main
 from curlwright.contracts import EXIT_IO_ERROR, EXIT_PARSE_ERROR
 from curlwright.infrastructure.browser_manager import BrowserManager
-from curlwright.infrastructure.bypass_manager import BypassManager
+from curlwright.infrastructure.protection_runtime import (
+    PlaywrightChallengeActuator,
+    PlaywrightPageProbe,
+)
 
 
 def _load_module_without_project_root(module_path: Path, module_name: str):
@@ -146,9 +149,7 @@ async def test_browser_manager_handle_turnstile_success_branch():
 
 
 @pytest.mark.asyncio
-async def test_bypass_manager_assess_page_sets_cloudflare_indicators():
-    manager = BypassManager()
-
+async def test_page_probe_assess_page_sets_cloudflare_indicators():
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=True)
         page = await browser.new_page()
@@ -166,7 +167,7 @@ async def test_bypass_manager_assess_page_sets_cloudflare_indicators():
             """
         )
 
-        assessment = await manager.assess_page(page, None)
+        assessment = await PlaywrightPageProbe().assess_page(page, None)
 
         assert assessment.outcome == "challenge"
         assert "block-text-pattern" in assessment.indicators
@@ -176,34 +177,7 @@ async def test_bypass_manager_assess_page_sets_cloudflare_indicators():
 
 
 @pytest.mark.asyncio
-async def test_bypass_manager_perform_bypass_turnstile_branch_returns_clear():
-    manager = BypassManager()
-    server, thread = _start_turnstile_server()
-
-    try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=True)
-            page = await browser.new_page()
-
-            assessment = await manager.perform_bypass(
-                page=page,
-                target_url=f"http://127.0.0.1:{server.server_port}/turnstile-clear",
-                timeout_ms=3_000,
-                trusted_session=False,
-                console_events=[],
-            )
-
-            assert assessment.outcome == "clear"
-            await browser.close()
-    finally:
-        server.shutdown()
-        thread.join(timeout=2)
-
-
-@pytest.mark.asyncio
-async def test_bypass_manager_defensive_internal_branches():
-    manager = BypassManager()
-
+async def test_challenge_actuator_defensive_internal_branches():
     class FailingMouse:
         async def move(self, *_args, **_kwargs):
             raise RuntimeError("move failure")
@@ -223,7 +197,7 @@ async def test_bypass_manager_defensive_internal_branches():
         async def evaluate(self, *_args, **_kwargs):
             raise RuntimeError("eval failure")
 
-    await manager._stabilize_page(Page(), attempt_index=1, timeout_ms=100)
+    await PlaywrightChallengeActuator().stabilize_page(Page(), attempt_index=1, timeout_ms=100)
 
 
 def test_package_main_verbose_helper_lines(capsys):

@@ -400,7 +400,6 @@ async def test_use_cases_cover_prepare_resolve_fetch_persist_and_report():
 
 def test_playwright_wrapper_exports_are_public():
     assert playwright_exports.BrowserManager is not None
-    assert playwright_exports.BypassManager is not None
     assert playwright_exports.DefaultBrowserManagerFactory is not None
     assert chrome_major_version("Mozilla/5.0 Safari/537.36") == "124"
 

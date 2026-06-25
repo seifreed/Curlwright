@@ -6,15 +6,16 @@ from pathlib import Path
 import pytest
 
 from curlwright.application.request_executor import RequestExecutor as ApplicationRequestExecutor
+from curlwright.application.use_cases import ResolveProtection
 from curlwright.domain import (
     BrowserSessionConfig,
     BypassAssessment,
     CurlRequest,
     FetchResponse,
 )
-from curlwright.domain.policy import BypassAction
+from curlwright.domain.policy import BypassAction, BypassPolicy
 from curlwright.infrastructure.browser_manager import BrowserManager
-from curlwright.infrastructure.bypass_manager import BypassManager
+from curlwright.infrastructure.bypass_classifier import compact_text
 from curlwright.infrastructure.parsers import CurlParser
 from curlwright.infrastructure.persistence import CookieManager
 from curlwright.infrastructure.playwright_runtime import PlaywrightRequestRuntime
@@ -121,9 +122,7 @@ def test_browser_manager_unit_paths_cover_remaining_branches(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_bypass_manager_helper_paths_cover_wrappers():
-    manager = BypassManager()
-
+async def test_resolve_protection_apply_decision_covers_action_branches():
     class SimpleActuator:
         def __init__(self):
             self.calls = []
@@ -147,10 +146,17 @@ async def test_bypass_manager_helper_paths_cover_wrappers():
         async def is_managed_challenge(self, page):
             return True
 
-    manager.challenge_actuator = SimpleActuator()
-    manager.page_probe = SimpleProbe()
+    actuator = SimpleActuator()
+    probe = SimpleProbe()
+    resolver = ResolveProtection(
+        policy=BypassPolicy(),
+        page_probe=probe,
+        challenge_actuator=actuator,
+        artifact_store=None,
+        telemetry=None,
+    )
 
-    assert await manager._execute_decision(
+    assert await resolver._apply_decision(
         page=object(),
         decision=type("Decision", (), {"action": BypassAction.FAIL_BLOCKED, "revisit_target": False})(),
         target_url="https://example.com/path",
@@ -158,35 +164,25 @@ async def test_bypass_manager_helper_paths_cover_wrappers():
         attempt_index=2,
     ) is False
     decision = type("Decision", (), {"action": BypassAction.ADVANCE_CHALLENGE, "revisit_target": False})()
-    await manager._execute_decision(
+    await resolver._apply_decision(
         page=object(),
         decision=decision,
         target_url="https://example.com/path",
         timeout_ms=100,
         attempt_index=2,
     )
-    await manager._execute_decision(
+    await resolver._apply_decision(
         page=object(),
         decision=type("Decision", (), {"action": BypassAction.WAIT_MANAGED_CHALLENGE, "revisit_target": True})(),
         target_url="https://example.com/path",
         timeout_ms=100,
         attempt_index=1,
     )
-
-    await manager._execute_decision(
-        page=object(),
-        decision=type("Decision", (), {"action": BypassAction.WAIT_MANAGED_CHALLENGE, "revisit_target": True})(),
-        target_url="https://example.com/path",
-        timeout_ms=100,
-        attempt_index=1,
-    )
-    assert await manager._is_managed_challenge(object()) is True
-    await manager._wait_for_managed_challenge(object(), 100)
-    await manager._revisit_target_after_challenge(object(), "https://example.com/path", 100)
-    assert manager._build_attempt_urls("https://example.com/path", True)[0] == "https://example.com/path"
-    assert manager._base_url("https://example.com/path") == "https://example.com/"
-    assert manager._compact_text("a   b") == "a b"
-    assert any(call[0] == "managed" for call in manager.challenge_actuator.calls)
+    assert await probe.is_managed_challenge(object()) is True
+    await actuator.wait_for_managed_challenge(object(), timeout_ms=100)
+    await actuator.revisit_target(object(), target_url="https://example.com/path", timeout_ms=100)
+    assert compact_text("a   b") == "a b"
+    assert any(call[0] == "managed" for call in actuator.calls)
 
 
 @pytest.mark.asyncio
@@ -333,7 +329,7 @@ async def test_playwright_runtime_and_application_executor_remaining_paths(tmp_p
         challenge_actuator=Actuator(),
         artifact_store=ArtifactStore(),
         telemetry=Telemetry(),
-        bypass_policy=BypassManager().policy,
+        bypass_policy=BypassPolicy(),
         session_store=SessionStore(),
         cookie_store=None,
         headless=True,

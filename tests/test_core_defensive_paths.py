@@ -3,7 +3,10 @@ from __future__ import annotations
 import pytest
 
 from curlwright.infrastructure.browser_manager import BrowserManager
-from curlwright.infrastructure.bypass_manager import BypassManager
+from curlwright.infrastructure.protection_runtime import (
+    PlaywrightChallengeActuator,
+    PlaywrightPageProbe,
+)
 
 
 class FailingLocator:
@@ -72,8 +75,7 @@ class FailingStopResource:
 
 
 @pytest.mark.asyncio
-async def test_bypass_manager_assess_page_tolerates_page_failures():
-    manager = BypassManager()
+async def test_page_probe_assess_page_tolerates_page_failures():
     page = DefensivePage(
         title_error=RuntimeError("title"),
         content_error=RuntimeError("content"),
@@ -81,15 +83,15 @@ async def test_bypass_manager_assess_page_tolerates_page_failures():
         locator_text_error=RuntimeError("text"),
     )
 
-    assessment = await manager.assess_page(page, response=None)
+    assessment = await PlaywrightPageProbe().assess_page(page, None)
 
     assert assessment.outcome == "clear"
     assert assessment.title == ""
     assert assessment.body_excerpt == ""
 
 
-def test_bypass_manager_assess_response_payload_marks_empty_204_body():
-    assessment = BypassManager().assess_response_payload(
+def test_page_probe_assess_response_payload_marks_empty_204_body():
+    assessment = PlaywrightPageProbe().assess_response_payload(
         {"status": 204, "url": "https://example.com/empty", "body": ""}
     )
 
@@ -98,17 +100,7 @@ def test_bypass_manager_assess_response_payload_marks_empty_204_body():
 
 
 @pytest.mark.asyncio
-async def test_bypass_manager_selector_exists_returns_false_on_errors():
-    manager = BypassManager()
-    page = DefensivePage(locator_count_error=RuntimeError("boom"))
-
-    assert await manager._selector_exists(page, "div#challenge-running") is False
-
-
-@pytest.mark.asyncio
-async def test_bypass_manager_stabilize_page_tolerates_wait_failures():
-    manager = BypassManager()
-
+async def test_challenge_actuator_stabilize_page_tolerates_wait_failures():
     class PageWithFailingWait(DefensivePage):
         class Mouse:
             async def move(self, *_args, **_kwargs):
@@ -124,27 +116,24 @@ async def test_bypass_manager_stabilize_page_tolerates_wait_failures():
 
     page = PageWithFailingWait(wait_error=RuntimeError("networkidle"))
 
-    await manager._stabilize_page(page, attempt_index=1, timeout_ms=100)
+    await PlaywrightChallengeActuator().stabilize_page(page, attempt_index=1, timeout_ms=100)
 
 
 @pytest.mark.asyncio
-async def test_bypass_manager_turnstile_resolution_falls_back_when_wait_fails():
-    manager = BypassManager()
+async def test_challenge_actuator_turnstile_resolution_falls_back_when_wait_fails():
     page = DefensivePage(wait_error=RuntimeError("networkidle"))
     page.frames = []
 
-    await manager._attempt_turnstile_resolution(page, timeout_ms=100)
+    await PlaywrightChallengeActuator().resolve_turnstile(page, timeout_ms=100)
 
 
 @pytest.mark.asyncio
-async def test_bypass_manager_challenge_progress_ignores_reload_errors():
-    manager = BypassManager()
-
+async def test_challenge_actuator_challenge_progress_ignores_reload_errors():
     class ReloadFailPage(DefensivePage):
         async def reload(self, *_args, **_kwargs):
             raise RuntimeError("reload failed")
 
-    await manager._attempt_challenge_progress(ReloadFailPage(), attempt_index=1, timeout_ms=100)
+    await PlaywrightChallengeActuator().advance_challenge(ReloadFailPage(), attempt_index=1, timeout_ms=100)
 
 
 @pytest.mark.asyncio

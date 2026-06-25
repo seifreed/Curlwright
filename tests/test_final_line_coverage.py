@@ -4,13 +4,12 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
-from playwright.async_api import async_playwright
 
 import curlwright
 from curlwright.domain import CurlRequest, DomainBypassState
 from curlwright.executor import RequestExecutor
-from curlwright.infrastructure.bypass_manager import BypassManager
 from curlwright.infrastructure.parsers import CurlParser
+from curlwright.infrastructure.protection_runtime import PlaywrightChallengeActuator
 
 
 class _CookieCaptureServer(ThreadingHTTPServer):
@@ -112,55 +111,26 @@ async def test_request_executor_covers_zero_retry_runtime_guard_and_cookie_branc
 
 
 @pytest.mark.asyncio
-async def test_bypass_manager_turnstile_second_assessment_and_frame_exception_paths():
-    manager = BypassManager()
+async def test_challenge_actuator_turnstile_resolution_handles_frame_click_failure():
+    class BrokenLocator:
+        async def count(self):
+            return 1
 
-    async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=True)
-        page = await browser.new_page()
-        await page.set_content(
-            """
-            <html>
-              <body>
-                <div class="cf-turnstile">widget</div>
-                <button id="solve-turnstile" onclick="
-                  document.querySelector('.cf-turnstile').remove();
-                  this.remove();
-                ">solve</button>
-              </body>
-            </html>
-            """
-        )
+        @property
+        def first(self):
+            return self
 
-        assessment = await manager.perform_bypass(
-            page=page,
-            target_url="data:text/html,<html><body><div class='cf-turnstile'></div><button id='solve-turnstile' onclick=\"document.querySelector('.cf-turnstile').remove();this.remove();\">solve</button></body></html>",
-            timeout_ms=1500,
-            trusted_session=False,
-            console_events=[],
-        )
-        assert assessment.outcome == "clear"
+        async def click(self, **_kwargs):
+            raise RuntimeError("click failure")
 
-        class BrokenLocator:
-            async def count(self):
-                return 1
+    class BrokenFrame:
+        def locator(self, _selector):
+            return BrokenLocator()
 
-            @property
-            def first(self):
-                return self
+    class BrokenPage:
+        frames = [BrokenFrame()]
 
-            async def click(self, **_kwargs):
-                raise RuntimeError("click failure")
+        async def wait_for_load_state(self, *_args, **_kwargs):
+            return None
 
-        class BrokenFrame:
-            def locator(self, _selector):
-                return BrokenLocator()
-
-        class BrokenPage:
-            frames = [BrokenFrame()]
-
-            async def wait_for_load_state(self, *_args, **_kwargs):
-                return None
-
-        await manager._attempt_turnstile_resolution(BrokenPage(), timeout_ms=100)
-        await browser.close()
+    await PlaywrightChallengeActuator().resolve_turnstile(BrokenPage(), timeout_ms=100)
