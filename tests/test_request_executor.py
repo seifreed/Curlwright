@@ -1,6 +1,33 @@
+import base64
+
 from curlwright.domain import CurlRequest
 from curlwright.executor import RequestExecutor
 from curlwright.infrastructure.protection_runtime import PlaywrightPageProbe
+
+
+def test_basic_auth_is_sent_preemptively_in_fetch_headers():
+    executor = RequestExecutor(timeout=30)
+    request = CurlRequest(url="https://example.com/private", auth=("alice", "secret"))
+
+    options = executor.http_runtime.build_fetch_options(request)
+
+    expected = "Basic " + base64.b64encode(b"alice:secret").decode()
+    assert options["headers"]["Authorization"] == expected
+    # The request's own headers must not be mutated as a side effect.
+    assert "Authorization" not in request.headers
+
+
+def test_explicit_authorization_header_is_not_overridden_by_auth():
+    executor = RequestExecutor(timeout=30)
+    request = CurlRequest(
+        url="https://example.com/private",
+        headers={"Authorization": "Bearer token123"},
+        auth=("alice", "secret"),
+    )
+
+    options = executor.http_runtime.build_fetch_options(request)
+
+    assert options["headers"]["Authorization"] == "Bearer token123"
 
 
 def test_request_timeout_overrides_executor_default():

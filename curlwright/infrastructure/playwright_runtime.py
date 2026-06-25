@@ -1,6 +1,7 @@
 """Operational Playwright runtime helpers kept out of the application use case."""
 
 import asyncio
+import base64
 import json
 
 from curlwright.domain import CurlRequest, FetchResponse
@@ -149,9 +150,16 @@ class PlaywrightRequestRuntime:
             logger.debug("networkidle wait failed during human simulation", exc_info=True)
 
     def build_fetch_options(self, request: CurlRequest) -> FetchOptions:
+        headers: FetchHeaders = dict(request.headers or {})
+        if request.auth and not any(key.lower() == "authorization" for key in headers):
+            # curl's -u sends Basic auth preemptively; Playwright's reactive
+            # http_credentials never fires for an in-page fetch, so set it here.
+            username, password = request.auth
+            token = base64.b64encode(f"{username}:{password}".encode()).decode()
+            headers["Authorization"] = f"Basic {token}"
         fetch_options: FetchOptions = {
             "method": request.method,
-            "headers": request.headers or {},
+            "headers": headers,
             "redirect": "follow" if request.follow_redirects else "manual",
         }
         if request.data:
