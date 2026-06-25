@@ -36,9 +36,12 @@ from curlwright.domain import (
     TelemetryPort,
 )
 from curlwright.domain.policy import BypassPolicy
+from curlwright.infrastructure.logging import setup_logger
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
+
+logger = setup_logger(__name__)
 
 type HttpCredentials = dict[str, str]
 type BrowserSignature = tuple[str | None, bool, tuple[str | None, str | None], str]
@@ -122,6 +125,9 @@ class RequestExecutor:
         browser_signature = self._get_browser_signature(request, user_agent)
         if self.initialized and browser_signature == self._browser_signature:
             return
+        logger.debug(
+            "Building browser manager (headless=%s, user_agent=%s)", self.headless, user_agent
+        )
         if self.browser_manager:
             await self.browser_manager.close()
         self.browser_manager = self.browser_manager_factory.create(
@@ -149,6 +155,9 @@ class RequestExecutor:
             max_retries=max_retries,
             delay=delay,
         )
+        logger.info(
+            "Executing %s request to %s (max_retries=%s)", request.method, request.url, max_retries
+        )
 
         for attempt in range(max_retries):
             effective_user_agent = self._get_retry_user_agent(attempt)
@@ -164,6 +173,13 @@ class RequestExecutor:
                     outcome=result.outcome,
                     fallback_url=request.url,
                 )
+                logger.info(
+                    "Request to %s succeeded on attempt %s/%s (HTTP %s)",
+                    request.url,
+                    attempt + 1,
+                    max_retries,
+                    result.response.status,
+                )
                 return reported.to_payload()
             except BypassFailure as error:
                 attempt_record.outcome = "bypass_failure"
@@ -173,8 +189,22 @@ class RequestExecutor:
                 execution_meta.attempts.append(attempt_record)
                 await self._reset_runtime_state()
                 if attempt < max_retries - 1:
+                    logger.warning(
+                        "Attempt %s/%s for %s hit a bypass failure (%s); retrying in %ss",
+                        attempt + 1,
+                        max_retries,
+                        request.url,
+                        error,
+                        delay,
+                    )
                     await asyncio.sleep(delay)
                 else:
+                    logger.error(
+                        "Bypass failed for %s after %s attempt(s): %s",
+                        request.url,
+                        max_retries,
+                        error,
+                    )
                     raise
             except Exception as error:
                 attempt_record.outcome = "error"
@@ -182,8 +212,22 @@ class RequestExecutor:
                 execution_meta.attempts.append(attempt_record)
                 await self._reset_runtime_state()
                 if attempt < max_retries - 1:
+                    logger.warning(
+                        "Attempt %s/%s for %s errored (%s); retrying in %ss",
+                        attempt + 1,
+                        max_retries,
+                        request.url,
+                        error,
+                        delay,
+                    )
                     await asyncio.sleep(delay)
                 else:
+                    logger.error(
+                        "Request to %s failed after %s attempt(s): %s",
+                        request.url,
+                        max_retries,
+                        error,
+                    )
                     raise
         raise Exception("Failed to execute request after all retries")
 
