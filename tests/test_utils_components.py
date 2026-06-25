@@ -217,6 +217,11 @@ def test_artifact_store_logs_destination(tmp_path, caplog):
         for r in caplog.records
     )
 
+    if os.name == "posix":
+        assert stat.S_IMODE(artifact_dir.stat().st_mode) == 0o700
+        for artifact_file in artifact_dir.iterdir():
+            assert stat.S_IMODE(artifact_file.stat().st_mode) == 0o600
+
 
 def test_cookie_manager_save_load_export_import_and_clear(tmp_path):
     cookie_file = tmp_path / "cookies.pkl"
