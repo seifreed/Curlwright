@@ -110,10 +110,23 @@ class PlaywrightChallengeActuator:
             logger.debug("synthetic event dispatch failed", exc_info=True)
 
     async def resolve_turnstile(self, page, *, timeout_ms: int) -> None:
-        # Primary path: click the checkbox at its real coordinates. The in-frame
-        # selector pass is only a fallback — it can otherwise click unrelated
-        # submit buttons / labels on the host page and trigger a navigation.
-        interacted = await self._click_turnstile_checkbox(page)
+        # The human-simulation warm-up scrolls the page; a scrolled widget makes
+        # the checkbox click land off-target and the token never issues. Reset to
+        # the top so the widget sits where Playwright will click it.
+        try:
+            await page.evaluate("window.scrollTo(0, 0)")
+        except Exception:
+            logger.debug("scroll-to-top before turnstile click failed", exc_info=True)
+
+        # Primary path: click the checkbox INSIDE the Cloudflare challenge frame.
+        # The widget iframe lives in a closed shadow DOM and never settles for a
+        # coordinate click (its bounding_box() times out, and the wrapper div is
+        # far wider than the widget so a left-offset guess misses), but Playwright
+        # can still drive the real <input> inside the frame. Coordinate and
+        # generic-selector clicks remain as fallbacks.
+        interacted = await self._click_challenge_frame_checkbox(page, timeout_ms=timeout_ms)
+        if not interacted:
+            interacted = await self._click_turnstile_checkbox(page)
         if not interacted:
             interacted = await self._click_turnstile_selectors(page)
 
@@ -122,6 +135,45 @@ class PlaywrightChallengeActuator:
             timeout_ms=timeout_ms,
             expect_interaction=interacted,
         )
+
+    async def _click_challenge_frame_checkbox(self, page, *, timeout_ms: int) -> bool:
+        # Restrict to Cloudflare-owned frames so we never click a host-page
+        # control (which could trigger a navigation). frame.locator(...).click()
+        # resolves the element and its real coordinates internally, reaching the
+        # checkbox even when the iframe element itself is not actionable.
+        #
+        # The click can "succeed" (Playwright dispatches it) yet not toggle the
+        # box — e.g. a CSS-transformed widget shifts the real hit point. So we
+        # verify the issued token after each click and keep retrying within the
+        # deadline instead of trusting a single dispatch.
+        deadline = asyncio.get_event_loop().time() + min(timeout_ms / 1000, 12.0)
+        clicked = False
+        while asyncio.get_event_loop().time() < deadline:
+            did_click = False
+            for frame in page.frames:
+                url = getattr(frame, "url", "") or ""
+                if "challenges.cloudflare.com" not in url and "turnstile" not in url:
+                    continue
+                for selector in ("input[type='checkbox']", "[role='checkbox']"):
+                    try:
+                        locator = frame.locator(selector)
+                        if await locator.count() > 0:
+                            await locator.first.click(timeout=3_000)
+                            clicked = did_click = True
+                    except Exception:
+                        logger.debug(
+                            "turnstile frame checkbox %s click failed", selector, exc_info=True
+                        )
+            # Give a fresh click up to ~3s to settle into a token before
+            # re-clicking, so we never reset a widget that is mid-verification.
+            if did_click:
+                for _ in range(6):
+                    if await self._turnstile_response_ready(page):
+                        return True
+                    await asyncio.sleep(0.5)
+            else:
+                await asyncio.sleep(0.5)
+        return clicked
 
     async def _click_turnstile_selectors(self, page) -> bool:
         selectors = [

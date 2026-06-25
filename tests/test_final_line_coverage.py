@@ -106,11 +106,16 @@ async def test_challenge_actuator_turnstile_resolution_handles_frame_click_failu
             raise RuntimeError("click failure")
 
     class BrokenFrame:
+        url = "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/x"
+
         def locator(self, _selector):
             return BrokenLocator()
 
     class BrokenPage:
         frames = [BrokenFrame()]
+
+        async def evaluate(self, *_args, **_kwargs):
+            return None
 
         async def wait_for_load_state(self, *_args, **_kwargs):
             return None
