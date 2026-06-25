@@ -263,9 +263,6 @@ class PersistSessionState:
 
 
 class BuildExecutionReport:
-    def start(self, execution_meta: ExecutionMetadata) -> ExecutionMetadata:
-        return execution_meta
-
     def complete(
         self,
         *,

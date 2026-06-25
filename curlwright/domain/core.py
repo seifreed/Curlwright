@@ -253,39 +253,6 @@ class CookieStorePort(Protocol):
     def has_cookies_for_domain(self, domain: str) -> bool: ...
 
 
-class DomainStateStorePort(Protocol):
-    state_file: object
-
-    def get(self, domain_key: str) -> DomainBypassState | None: ...
-
-    def is_trusted(self, domain_key: str, max_age_seconds: int = 3600) -> bool: ...
-
-    def mark_success(
-        self,
-        *,
-        domain_key: str,
-        domain: str,
-        user_agent: str,
-        proxy: str | None,
-        profile_dir: str | None,
-        final_url: str,
-        cookie_names: CookieNames,
-        artifact_dir: str | None,
-    ) -> None: ...
-
-    def mark_failure(
-        self,
-        *,
-        domain_key: str,
-        domain: str,
-        user_agent: str,
-        proxy: str | None,
-        profile_dir: str | None,
-        final_url: str | None,
-        artifact_dir: str | None,
-    ) -> None: ...
-
-
 class PageProbePort(Protocol):
     async def assess_page(self, page, response) -> BypassAssessment: ...
 

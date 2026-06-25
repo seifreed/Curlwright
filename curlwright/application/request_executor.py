@@ -140,12 +140,10 @@ class RequestExecutor:
 
     async def execute(self, curl_command: str, max_retries: int = 3, delay: int = 5) -> ResponsePayload:
         request = self.parser.parse(curl_command)
-        execution_meta = self.build_execution_report.start(
-            self._build_execution_metadata(
-                request=request,
-                max_retries=max_retries,
-                delay=delay,
-            )
+        execution_meta = self._build_execution_metadata(
+            request=request,
+            max_retries=max_retries,
+            delay=delay,
         )
 
         for attempt in range(max_retries):
