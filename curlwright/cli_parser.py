@@ -58,7 +58,7 @@ Examples:
             "--cookie-file",
             type=str,
             default=None,
-            help="Override the persistent cookie jar path (default: ~/.curlwright/cookies.pkl)",
+            help="Override the persistent cookie jar path (default: ~/.curlwright/cookies.json)",
         )
         browser_group.add_argument(
             "--state-file",

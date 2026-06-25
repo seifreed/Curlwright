@@ -58,7 +58,7 @@ class CurlParser:
                         request.data = self._append_request_data(request.data, tokens[i])
                     if request.method == "GET" and not append_data_to_query:
                         request.method = "POST"
-            elif token == "--data-urlencode":
+            elif token in ["--data-urlencode"]:
                 i += 1
                 if i < len(tokens):
                     encoded_pairs = self._parse_data_urlencode(tokens[i])
@@ -81,7 +81,7 @@ class CurlParser:
                 request.follow_redirects = True
             elif token in ["-k", "--insecure"]:
                 request.verify_ssl = False
-            elif token == "--max-time":
+            elif token in ["--max-time"]:
                 i += 1
                 if i < len(tokens):
                     request.timeout = int(tokens[i])

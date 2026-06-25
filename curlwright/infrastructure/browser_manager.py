@@ -163,7 +163,7 @@ class BrowserManager:
             try:
                 await page.goto("about:blank", wait_until="domcontentloaded")
             except Exception:
-                pass
+                logger.debug("about:blank navigation failed", exc_info=True)
         await page.evaluate("""
             Object.defineProperty(document, 'hidden', {
                 get: () => false,

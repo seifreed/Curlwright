@@ -39,8 +39,8 @@ def test_parser_cookie_file_reference_and_empty_cookie_store(tmp_path):
     parsed = CurlParser().parse("curl -b @cookies.txt https://example.com")
     assert parsed.cookies == {}
 
-    cookie_file = tmp_path / "cookies.pkl"
-    cookie_file.write_bytes(b"\x80\x04]\x94.")
+    cookie_file = tmp_path / "cookies.json"
+    cookie_file.write_text("[]", encoding="utf-8")
     manager = CookieManager(str(cookie_file))
 
     class EmptyContext:

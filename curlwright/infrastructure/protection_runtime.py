@@ -12,6 +12,9 @@ from curlwright.infrastructure.bypass_classifier import (
     BypassClassifier,
     selector_exists,
 )
+from curlwright.infrastructure.logging import setup_logger
+
+logger = setup_logger(__name__)
 
 MANAGED_CHALLENGE_URL_MARKER = "__cf_chl_"
 MANAGED_CHALLENGE_HTML_MARKERS = ("window._cf_chl_opt", "/cdn-cgi/challenge-platform/")
@@ -74,12 +77,12 @@ class PlaywrightChallengeActuator:
         try:
             await page.wait_for_load_state("networkidle", timeout=min(timeout_ms, 2_500))
         except Exception:
-            pass
+            logger.debug("networkidle wait failed during page stabilization", exc_info=True)
         try:
             await page.mouse.move(120 + 20 * attempt_index, 160 + 20 * attempt_index)
             await page.mouse.wheel(0, 250)
         except Exception:
-            pass
+            logger.debug("synthetic mouse interaction failed", exc_info=True)
         try:
             await page.evaluate("""
                 () => {
@@ -88,7 +91,7 @@ class PlaywrightChallengeActuator:
                 }
                 """)
         except Exception:
-            pass
+            logger.debug("synthetic event dispatch failed", exc_info=True)
 
     async def resolve_turnstile(self, page, *, timeout_ms: int) -> None:
         selectors = [
@@ -109,6 +112,9 @@ class PlaywrightChallengeActuator:
                         await asyncio.sleep(0.5)
                         break
                 except Exception:
+                    logger.debug(
+                        "turnstile selector %s interaction failed", selector, exc_info=True
+                    )
                     continue
             if interacted:
                 break
@@ -128,7 +134,7 @@ class PlaywrightChallengeActuator:
             try:
                 await page.reload(wait_until="domcontentloaded", timeout=timeout_ms)
             except Exception:
-                pass
+                logger.debug("challenge reload failed", exc_info=True)
 
     async def wait_for_managed_challenge(self, page, *, timeout_ms: int) -> None:
         deadline = asyncio.get_event_loop().time() + min(timeout_ms / 1000, 10.0)
@@ -143,7 +149,9 @@ class PlaywrightChallengeActuator:
             try:
                 await page.wait_for_load_state("networkidle", timeout=1_000)
             except Exception:
-                pass
+                logger.debug(
+                    "networkidle wait failed while awaiting managed challenge", exc_info=True
+                )
             await asyncio.sleep(0.5)
 
     async def revisit_target(self, page, *, target_url: str, timeout_ms: int) -> None:
@@ -152,7 +160,7 @@ class PlaywrightChallengeActuator:
         try:
             await page.goto(target_url, wait_until="domcontentloaded", timeout=timeout_ms)
         except Exception:
-            pass
+            logger.debug("revisit navigation to %s failed", target_url, exc_info=True)
 
     async def _click_turnstile_iframe_center(self, page) -> bool:
         iframe_selectors = [
@@ -164,6 +172,7 @@ class PlaywrightChallengeActuator:
                 locator = page.locator(selector)
                 count = await locator.count()
             except Exception:
+                logger.debug("iframe selector %s lookup failed", selector, exc_info=True)
                 continue
             for index in range(count):
                 try:
@@ -177,6 +186,7 @@ class PlaywrightChallengeActuator:
                     await asyncio.sleep(0.5)
                     return True
                 except Exception:
+                    logger.debug("iframe center click failed", exc_info=True)
                     continue
         return False
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import pickle
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -26,7 +25,7 @@ class CookieManager:
 
     def __init__(self, cookie_file: str | None = None):
         self.cookie_file = (
-            Path(cookie_file) if cookie_file else Path.home() / ".curlwright" / "cookies.pkl"
+            Path(cookie_file) if cookie_file else Path.home() / ".curlwright" / "cookies.json"
         )
         self.cookie_file.parent.mkdir(parents=True, exist_ok=True)
         self.cookies: CookieJar = []
@@ -34,8 +33,8 @@ class CookieManager:
     async def save_cookies(self, context) -> None:
         try:
             self.cookies = await context.cookies()
-            with open(self.cookie_file, "wb") as file_handle:
-                pickle.dump(self.cookies, file_handle)
+            with open(self.cookie_file, "w", encoding="utf-8") as file_handle:
+                json.dump(self.cookies, file_handle)
             logger.info("Saved %s cookies to %s", len(self.cookies), self.cookie_file)
         except Exception as error:
             logger.error("Failed to save cookies: %s", error)
@@ -45,8 +44,8 @@ class CookieManager:
             if not self.cookie_file.exists():
                 logger.info("No cookie file found")
                 return False
-            with open(self.cookie_file, "rb") as file_handle:
-                self.cookies = pickle.load(file_handle)
+            with open(self.cookie_file, "r", encoding="utf-8") as file_handle:
+                self.cookies = json.load(file_handle)
             if self.cookies:
                 await context.add_cookies(self.cookies)
                 logger.info("Loaded %s cookies", len(self.cookies))
@@ -78,10 +77,10 @@ class CookieManager:
 
     def import_cookies_json(self, input_file: str) -> bool:
         try:
-            with open(input_file, "r") as file_handle:
+            with open(input_file, "r", encoding="utf-8") as file_handle:
                 self.cookies = json.load(file_handle)
-            with open(self.cookie_file, "wb") as file_handle:
-                pickle.dump(self.cookies, file_handle)
+            with open(self.cookie_file, "w", encoding="utf-8") as file_handle:
+                json.dump(self.cookies, file_handle)
             logger.info("Imported %s cookies from %s", len(self.cookies), input_file)
             return True
         except Exception as error:

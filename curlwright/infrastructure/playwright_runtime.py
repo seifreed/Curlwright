@@ -4,9 +4,12 @@ import asyncio
 import json
 
 from curlwright.domain import CurlRequest, FetchResponse
+from curlwright.infrastructure.logging import setup_logger
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
+
+logger = setup_logger(__name__)
 
 type FetchHeaders = dict[str, str]
 type FetchOptions = dict[str, str | FetchHeaders]
@@ -100,6 +103,7 @@ class PlaywrightRequestRuntime:
             try:
                 await page.goto(navigate_url, wait_until="domcontentloaded", timeout=timeout_ms)
             except Exception:
+                logger.debug("warm-up navigation to %s failed", navigate_url, exc_info=True)
                 continue
             await self._simulate_human_interaction(page, phase=index, timeout_ms=timeout_ms)
 
@@ -107,7 +111,7 @@ class PlaywrightRequestRuntime:
         try:
             await page.bring_to_front()
         except Exception:
-            pass
+            logger.debug("bring_to_front failed during human simulation", exc_info=True)
 
         try:
             await page.mouse.move(240 + 25 * phase, 180 + 18 * phase, steps=12)
@@ -116,7 +120,9 @@ class PlaywrightRequestRuntime:
             await asyncio.sleep(0.25 + phase * 0.05)
             await page.mouse.move(520 + 15 * phase, 420 + 20 * phase, steps=10)
         except Exception:
-            pass
+            logger.debug(
+                "synthetic mouse interaction failed during human simulation", exc_info=True
+            )
 
         try:
             await page.evaluate("""
@@ -127,12 +133,12 @@ class PlaywrightRequestRuntime:
                 }
                 """)
         except Exception:
-            pass
+            logger.debug("synthetic event dispatch failed during human simulation", exc_info=True)
 
         try:
             await page.wait_for_load_state("networkidle", timeout=min(timeout_ms, 2_000))
         except Exception:
-            pass
+            logger.debug("networkidle wait failed during human simulation", exc_info=True)
 
     def build_fetch_options(self, request: CurlRequest) -> FetchOptions:
         fetch_options: FetchOptions = {
