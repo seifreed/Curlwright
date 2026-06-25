@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
-from pathlib import Path
 
-from tests.helpers import assert_payload_contract, start_fixture_server
+from tests.helpers import assert_payload_contract, run_cli, start_fixture_server
 
 
 def test_pipeline_json_contract_and_artifacts_with_real_cli(tmp_path):
@@ -17,9 +14,8 @@ def test_pipeline_json_contract_and_artifacts_with_real_cli(tmp_path):
     sarif_file = tmp_path / "reports" / "result.sarif"
 
     try:
-        result = subprocess.run(
+        result = run_cli(
             [
-                sys.executable,
                 "-m",
                 "curlwright.main",
                 "-c",
@@ -36,9 +32,6 @@ def test_pipeline_json_contract_and_artifacts_with_real_cli(tmp_path):
                 "--sarif-output",
                 str(sarif_file),
             ],
-            cwd=Path(__file__).resolve().parent.parent,
-            capture_output=True,
-            text=True,
             timeout=60,
         )
     finally:
@@ -60,9 +53,8 @@ def test_pipeline_json_contract_and_artifacts_with_real_cli(tmp_path):
 def test_pipeline_failure_json_and_sarif_with_real_cli(tmp_path):
     sarif_file = tmp_path / "reports" / "error.sarif"
 
-    result = subprocess.run(
+    result = run_cli(
         [
-            sys.executable,
             "-m",
             "curlwright.main",
             "-f",
@@ -72,9 +64,6 @@ def test_pipeline_failure_json_and_sarif_with_real_cli(tmp_path):
             "--sarif-output",
             str(sarif_file),
         ],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
         timeout=30,
     )
 

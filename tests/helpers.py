@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 from curlwright.domain import (
     AttemptRecord,
@@ -11,6 +14,19 @@ from curlwright.domain import (
     RuntimeMetadata,
     StateMetadata,
 )
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def run_cli(args: list[str], *, timeout: int = 60) -> subprocess.CompletedProcess:
+    """Run the CurlWright CLI as a subprocess from the project root."""
+    return subprocess.run(
+        [sys.executable, *args],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
 
 
 class BaseFixtureHandler(BaseHTTPRequestHandler):

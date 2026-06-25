@@ -4,7 +4,6 @@ import importlib.util
 import json
 import os
 import runpy
-import subprocess
 import sys
 from argparse import Namespace
 from contextlib import contextmanager
@@ -13,7 +12,7 @@ from pathlib import Path
 import pytest
 
 import curlwright.main as package_main
-from tests.helpers import assert_payload_contract, start_fixture_server
+from tests.helpers import assert_payload_contract, run_cli, start_fixture_server
 
 
 @contextmanager
@@ -30,9 +29,8 @@ def test_package_main_verbose_output():
     server, thread = start_fixture_server()
     url = f"http://127.0.0.1:{server.server_port}/json"
 
-    result = subprocess.run(
+    result = run_cli(
         [
-            sys.executable,
             "-m",
             "curlwright.main",
             "-c",
@@ -40,9 +38,6 @@ def test_package_main_verbose_output():
             "--headless",
             "--verbose",
         ],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
         timeout=60,
     )
 
@@ -60,9 +55,8 @@ def test_root_script_writes_output_file(tmp_path):
     url = f"http://127.0.0.1:{server.server_port}/json"
     output_file = tmp_path / "result.json"
 
-    result = subprocess.run(
+    result = run_cli(
         [
-            sys.executable,
             "curlwright.py",
             "-c",
             f"curl {url}",
@@ -70,9 +64,6 @@ def test_root_script_writes_output_file(tmp_path):
             "--output",
             str(output_file),
         ],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
         timeout=60,
     )
 
@@ -88,18 +79,14 @@ def test_cli_entrypoint_prints_body():
     server, thread = start_fixture_server()
     url = f"http://127.0.0.1:{server.server_port}/text"
 
-    result = subprocess.run(
+    result = run_cli(
         [
-            sys.executable,
             "-m",
             "curlwright.cli",
             "-c",
             f"curl {url}",
             "--headless",
         ],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
         timeout=60,
     )
 
@@ -114,9 +101,8 @@ def test_cli_json_output_contains_meta():
     server, thread = start_fixture_server()
     url = f"http://127.0.0.1:{server.server_port}/json"
 
-    result = subprocess.run(
+    result = run_cli(
         [
-            sys.executable,
             "-m",
             "curlwright.main",
             "-c",
@@ -132,9 +118,6 @@ def test_cli_json_output_contains_meta():
             "--profile-dir",
             ".artifacts/test-json/profile",
         ],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
         timeout=60,
     )
 
@@ -153,11 +136,8 @@ def test_cli_json_output_contains_meta():
 
 
 def test_entrypoint_exits_non_zero_on_invalid_arguments():
-    result = subprocess.run(
-        [sys.executable, "-m", "curlwright.main"],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
+    result = run_cli(
+        ["-m", "curlwright.main"],
         timeout=30,
     )
 
@@ -214,18 +194,14 @@ def test_package_main_helpers_cover_error_and_output_branches(tmp_path):
 
 
 def test_package_main_exits_non_zero_for_missing_file():
-    result = subprocess.run(
+    result = run_cli(
         [
-            sys.executable,
             "-m",
             "curlwright.main",
             "-f",
             "definitely-missing-request.txt",
             "--headless",
         ],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
         timeout=30,
     )
 
@@ -233,9 +209,8 @@ def test_package_main_exits_non_zero_for_missing_file():
 
 
 def test_package_main_json_failure_output_for_missing_file():
-    result = subprocess.run(
+    result = run_cli(
         [
-            sys.executable,
             "-m",
             "curlwright.main",
             "-f",
@@ -243,9 +218,6 @@ def test_package_main_json_failure_output_for_missing_file():
             "--headless",
             "--json-output",
         ],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
         timeout=30,
     )
 
@@ -256,9 +228,8 @@ def test_package_main_json_failure_output_for_missing_file():
 
 
 def test_package_main_json_failure_output_for_parse_error():
-    result = subprocess.run(
+    result = run_cli(
         [
-            sys.executable,
             "-m",
             "curlwright.main",
             "-c",
@@ -266,9 +237,6 @@ def test_package_main_json_failure_output_for_parse_error():
             "--headless",
             "--json-output",
         ],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
         timeout=30,
     )
 
@@ -282,9 +250,8 @@ def test_json_output_stays_clean_when_verbose_is_enabled():
     server, thread = start_fixture_server()
     url = f"http://127.0.0.1:{server.server_port}/json"
 
-    result = subprocess.run(
+    result = run_cli(
         [
-            sys.executable,
             "-m",
             "curlwright.main",
             "-c",
@@ -293,9 +260,6 @@ def test_json_output_stays_clean_when_verbose_is_enabled():
             "--verbose",
             "--json-output",
         ],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
         timeout=60,
     )
 
@@ -313,9 +277,8 @@ def test_package_main_writes_sarif_report(tmp_path):
     url = f"http://127.0.0.1:{server.server_port}/json"
     sarif_path = tmp_path / "curlwright.sarif"
 
-    result = subprocess.run(
+    result = run_cli(
         [
-            sys.executable,
             "-m",
             "curlwright.main",
             "-c",
@@ -324,9 +287,6 @@ def test_package_main_writes_sarif_report(tmp_path):
             "--sarif-output",
             str(sarif_path),
         ],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
         timeout=60,
     )
 
@@ -344,9 +304,8 @@ def test_package_main_writes_sarif_report(tmp_path):
 def test_package_main_writes_sarif_report_for_failure(tmp_path):
     sarif_path = tmp_path / "curlwright-error.sarif"
 
-    result = subprocess.run(
+    result = run_cli(
         [
-            sys.executable,
             "-m",
             "curlwright.main",
             "-f",
@@ -355,9 +314,6 @@ def test_package_main_writes_sarif_report_for_failure(tmp_path):
             "--sarif-output",
             str(sarif_path),
         ],
-        cwd=Path(__file__).resolve().parent.parent,
-        capture_output=True,
-        text=True,
         timeout=30,
     )
 
