@@ -40,7 +40,9 @@ class BrowserManager:
         self.verify_ssl = verify_ssl
         self.http_credentials = http_credentials
         self.user_agent = user_agent or self._get_default_user_agent()
-        self.profile_dir = Path(profile_dir) if profile_dir else Path.home() / ".curlwright" / "browser-profile"
+        self.profile_dir = (
+            Path(profile_dir) if profile_dir else Path.home() / ".curlwright" / "browser-profile"
+        )
         self.profile_dir.mkdir(parents=True, exist_ok=True)
         self.playwright = None
         self.browser: Browser | None = None
@@ -162,16 +164,14 @@ class BrowserManager:
                 await page.goto("about:blank", wait_until="domcontentloaded")
             except Exception:
                 pass
-        await page.evaluate(
-            """
+        await page.evaluate("""
             Object.defineProperty(document, 'hidden', {
                 get: () => false,
             });
             Object.defineProperty(document, 'visibilityState', {
                 get: () => 'visible',
             });
-            """
-        )
+            """)
         return page
 
     async def close(self) -> None:

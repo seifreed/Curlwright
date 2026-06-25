@@ -81,14 +81,12 @@ class PlaywrightChallengeActuator:
         except Exception:
             pass
         try:
-            await page.evaluate(
-                """
+            await page.evaluate("""
                 () => {
                     window.dispatchEvent(new Event('mousemove'));
                     window.dispatchEvent(new Event('scroll'));
                 }
-                """
-            )
+                """)
         except Exception:
             pass
 

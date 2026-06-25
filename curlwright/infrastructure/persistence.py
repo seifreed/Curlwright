@@ -25,7 +25,9 @@ class CookieManager:
     """Manages browser cookies for session persistence."""
 
     def __init__(self, cookie_file: str | None = None):
-        self.cookie_file = Path(cookie_file) if cookie_file else Path.home() / ".curlwright" / "cookies.pkl"
+        self.cookie_file = (
+            Path(cookie_file) if cookie_file else Path.home() / ".curlwright" / "cookies.pkl"
+        )
         self.cookie_file.parent.mkdir(parents=True, exist_ok=True)
         self.cookies: CookieJar = []
 
@@ -100,9 +102,7 @@ class DomainStateStore:
 
     def __init__(self, state_file: str | None = None):
         self.state_file = (
-            Path(state_file)
-            if state_file
-            else Path.home() / ".curlwright" / "bypass-state.json"
+            Path(state_file) if state_file else Path.home() / ".curlwright" / "bypass-state.json"
         )
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
         self._state: dict[str, DomainBypassState] = {}

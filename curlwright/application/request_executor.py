@@ -96,7 +96,11 @@ class RequestExecutor:
         self.state_file = str(self.session_store.state_file)
         self.artifact_root = str(self.artifact_store.artifact_root)
         self.bypass_attempts = bypass_attempts
-        self.profile_dir = str(Path(profile_dir).expanduser()) if profile_dir else str(Path.home() / ".curlwright" / "browser-profile")
+        self.profile_dir = (
+            str(Path(profile_dir).expanduser())
+            if profile_dir
+            else str(Path.home() / ".curlwright" / "browser-profile")
+        )
 
         self.prepare_session = PrepareSession(http_runtime)
         self.resolve_protection = ResolveProtection(
@@ -136,7 +140,9 @@ class RequestExecutor:
         self._browser_signature = browser_signature
         self._effective_user_agent = user_agent
 
-    async def execute(self, curl_command: str, max_retries: int = 3, delay: int = 5) -> ResponsePayload:
+    async def execute(
+        self, curl_command: str, max_retries: int = 3, delay: int = 5
+    ) -> ResponsePayload:
         request = self.parser.parse(curl_command)
         execution_meta = self._build_execution_metadata(
             request=request,
@@ -230,7 +236,9 @@ class RequestExecutor:
                 proxy=request.proxy,
                 profile_dir=self.profile_dir,
                 final_url=response_data.url or request.url,
-                cookie_names=[cookie.get("name", "") for cookie in context_cookies if cookie.get("name")],
+                cookie_names=[
+                    cookie.get("name", "") for cookie in context_cookies if cookie.get("name")
+                ],
                 artifact_dir=artifact_dir,
             )
             return ExecutionResult(response=response_data, outcome=outcome)

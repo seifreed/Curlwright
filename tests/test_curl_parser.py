@@ -35,9 +35,7 @@ def test_get_with_data_urlencode_stays_get_and_moves_data_to_query():
 
 
 def test_get_after_data_moves_existing_body_to_query():
-    request = CurlParser().parse(
-        "curl --data 'page=2' -G https://example.com/items"
-    )
+    request = CurlParser().parse("curl --data 'page=2' -G https://example.com/items")
 
     assert request.method == "GET"
     assert request.data is None
@@ -77,9 +75,7 @@ def test_data_switches_get_to_post_and_appends_multiple_segments():
 
 
 def test_data_urlencode_without_get_uses_post_body():
-    request = CurlParser().parse(
-        "curl --data-urlencode 'q=hello world' https://example.com/search"
-    )
+    request = CurlParser().parse("curl --data-urlencode 'q=hello world' https://example.com/search")
 
     assert request.method == "POST"
     assert request.data == "q=hello+world"
@@ -92,9 +88,7 @@ def test_head_flag_sets_head_method():
 
 
 def test_output_related_flags_are_ignored_for_request_shape():
-    request = CurlParser().parse(
-        "curl -s -v -i -o out.txt --compressed https://example.com"
-    )
+    request = CurlParser().parse("curl -s -v -i -o out.txt --compressed https://example.com")
 
     assert request.method == "GET"
     assert request.url == "https://example.com"

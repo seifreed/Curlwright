@@ -82,8 +82,7 @@ async def test_page_probe_assess_page_sets_cloudflare_indicators():
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=True)
         page = await browser.new_page()
-        await page.set_content(
-            """
+        await page.set_content("""
             <html>
               <head>
                 <title>Attention Required! | Cloudflare</title>
@@ -93,8 +92,7 @@ async def test_page_probe_assess_page_sets_cloudflare_indicators():
                 <img src="/cdn-cgi/styles/main.css" />
               </body>
             </html>
-            """
-        )
+            """)
 
         assessment = await PlaywrightPageProbe().assess_page(page, None)
 

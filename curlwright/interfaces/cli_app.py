@@ -9,7 +9,11 @@ from pathlib import Path
 
 from curlwright.bootstrap import create_request_executor
 from curlwright.cli_parser import CLI
-from curlwright.interfaces.contracts import build_failure_payload, get_exit_code, serialize_output_payload
+from curlwright.interfaces.contracts import (
+    build_failure_payload,
+    get_exit_code,
+    serialize_output_payload,
+)
 from curlwright.interfaces.sarif import write_sarif_report
 from curlwright.logger import setup_logger
 from curlwright.models import ResponsePayload

@@ -32,7 +32,9 @@ class _CookieCaptureHandler(BaseHTTPRequestHandler):
 
 def _start_cookie_server():
     server = _CookieCaptureServer(("127.0.0.1", 0), _CookieCaptureHandler)
-    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
+    )
     thread.start()
     return server, thread
 

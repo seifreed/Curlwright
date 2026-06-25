@@ -11,10 +11,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from tests.e2e_real_cloudflare import run_real_cloudflare_suite
-
 
 def main() -> None:
+    from tests.e2e_real_cloudflare import run_real_cloudflare_suite
+
     results = run_real_cloudflare_suite()
     print(json.dumps(results, indent=2, sort_keys=True))
 

@@ -29,7 +29,9 @@ def test_domain_core_payload_helpers_cover_remaining_paths():
     assert "final" not in payload
 
     result = ExecutionResult(
-        response=FetchResponse(status=200, headers={"x": "1"}, body="body", url="https://example.com"),
+        response=FetchResponse(
+            status=200, headers={"x": "1"}, body="body", url="https://example.com"
+        ),
         meta=meta,
     )
     reconstructed = ExecutionResult.from_payload(result.to_payload())

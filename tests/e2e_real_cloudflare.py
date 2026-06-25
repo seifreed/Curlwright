@@ -77,7 +77,9 @@ async def _run_real_cloudflare_suite(config: RealBypassConfig) -> dict[str, str]
         bypass_attempts=3,
     )
     try:
-        challenge_first = await first_executor.execute(f"curl {config.challenge_url}", max_retries=2)
+        challenge_first = await first_executor.execute(
+            f"curl {config.challenge_url}", max_retries=2
+        )
     finally:
         await first_executor.close()
 
@@ -90,8 +92,12 @@ async def _run_real_cloudflare_suite(config: RealBypassConfig) -> dict[str, str]
         bypass_attempts=3,
     )
     try:
-        challenge_second = await second_executor.execute(f"curl {config.challenge_url}", max_retries=2)
-        turnstile_result = await second_executor.execute(f"curl {config.turnstile_url}", max_retries=2)
+        challenge_second = await second_executor.execute(
+            f"curl {config.challenge_url}", max_retries=2
+        )
+        turnstile_result = await second_executor.execute(
+            f"curl {config.turnstile_url}", max_retries=2
+        )
     finally:
         await second_executor.close()
 

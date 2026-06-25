@@ -192,8 +192,12 @@ class BypassClassifier:
             body_excerpt=compact_text(body_text or html),
         )
 
-    def assess_response_payload(self, payload: FetchResponse | dict[str, object]) -> BypassAssessment:
-        response = payload if isinstance(payload, FetchResponse) else FetchResponse.from_payload(payload)
+    def assess_response_payload(
+        self, payload: FetchResponse | dict[str, object]
+    ) -> BypassAssessment:
+        response = (
+            payload if isinstance(payload, FetchResponse) else FetchResponse.from_payload(payload)
+        )
         lower_body = response.body.lower()
         indicators: list[str] = []
 
@@ -266,11 +270,15 @@ class BypassClassifier:
     def _classify_outcome(self, indicators: list[str]) -> str:
         if "terminal-block-pattern" in indicators:
             return "blocked"
-        if any(selector.endswith("turnstile-response']") or "turnstile" in selector for selector in indicators):
+        if any(
+            selector.endswith("turnstile-response']") or "turnstile" in selector
+            for selector in indicators
+        ):
             return "turnstile"
         if any(
             item.startswith("selector:")
-            or item in {
+            or item
+            in {
                 "challenge-text-pattern",
                 "cloudflare-attention-title",
                 "cloudflare-interstitial-assets",
@@ -278,6 +286,8 @@ class BypassClassifier:
             for item in indicators
         ):
             return "challenge"
-        if "block-text-pattern" in indicators or any(item.startswith("status:") for item in indicators):
+        if "block-text-pattern" in indicators or any(
+            item.startswith("status:") for item in indicators
+        ):
             return "blocked"
         return "clear"

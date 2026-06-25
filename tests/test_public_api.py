@@ -1,11 +1,22 @@
-from curlwright import CookieManager, CurlParser, CurlRequest, RequestExecutor, __version__, get_version
+from curlwright import (
+    CookieManager,
+    CurlParser,
+    CurlRequest,
+    RequestExecutor,
+    __version__,
+    get_version,
+)
 from curlwright.application import RequestExecutor as ApplicationRequestExecutor
 from curlwright.infrastructure.parsers import CurlParser as InfrastructureCurlParser
 from curlwright.infrastructure.persistence import CookieManager as InfrastructureCookieManager
 from curlwright.parsers import CurlParser as ParserModuleExport
 from curlwright.parsers import CurlRequest as RequestModuleExport
 from curlwright.utils import CookieManager as CookieModuleExport
-from curlwright.runtime import ensure_supported_python, is_supported_python, supported_python_message
+from curlwright.runtime import (
+    ensure_supported_python,
+    is_supported_python,
+    supported_python_message,
+)
 
 
 def test_public_exports_match_documented_api():

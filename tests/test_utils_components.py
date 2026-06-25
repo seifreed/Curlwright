@@ -192,9 +192,7 @@ def test_cli_parses_valid_arguments():
 
 
 def test_cli_supports_disabling_cookie_persistence():
-    args = CLI().parse_arguments(
-        ["-c", "curl https://example.com", "--no-persist-cookies"]
-    )
+    args = CLI().parse_arguments(["-c", "curl https://example.com", "--no-persist-cookies"])
 
     assert args.no_persist_cookies is True
 

@@ -75,7 +75,9 @@ class FixtureHttpHandler(BaseFixtureHandler):
 
 def start_fixture_server():
     server = FixtureHttpServer(("127.0.0.1", 0))
-    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
+    )
     thread.start()
     return server, thread
 

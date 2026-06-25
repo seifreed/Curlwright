@@ -152,4 +152,6 @@ class CurlParser:
         parsed = urlsplit(url)
         current_pairs = parse_qsl(parsed.query, keep_blank_values=True)
         updated_query = urlencode(current_pairs + query_pairs, doseq=True)
-        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, updated_query, parsed.fragment))
+        return urlunsplit(
+            (parsed.scheme, parsed.netloc, parsed.path, updated_query, parsed.fragment)
+        )

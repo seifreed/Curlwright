@@ -66,7 +66,9 @@ class ExecutionOutcome:
 class BypassPolicy:
     """Decides how the application should react to abstract protection signals."""
 
-    def build_request_policy(self, target_url: str, trusted_session: TrustedSession) -> RequestPolicy:
+    def build_request_policy(
+        self, target_url: str, trusted_session: TrustedSession
+    ) -> RequestPolicy:
         base_url = self._base_url(target_url)
         if trusted_session.active:
             return RequestPolicy(navigation_targets=(target_url, target_url, base_url))
@@ -107,7 +109,9 @@ class BypassPolicy:
                 revisit_target=True,
             )
         if snapshot.state is ChallengeState.BLOCKED:
-            return BypassDecision(BypassAction.FAIL_BLOCKED, "challenge resolved into blocked state")
+            return BypassDecision(
+                BypassAction.FAIL_BLOCKED, "challenge resolved into blocked state"
+            )
         return BypassDecision(BypassAction.ADVANCE_CHALLENGE, "challenge still unresolved")
 
     def evaluate_fetch_result(self, snapshot: ProtectionSnapshot) -> ExecutionOutcome:

@@ -87,7 +87,9 @@ class ResolveProtection:
         trusted_session: bool,
     ) -> list[dict[str, str]]:
         console_events = self.telemetry.attach_console_capture(page)
-        request_policy = self.policy.build_request_policy(target_url, TrustedSession(trusted_session))
+        request_policy = self.policy.build_request_policy(
+            target_url, TrustedSession(trusted_session)
+        )
         latest_assessment = None
 
         for attempt_index, navigate_url in enumerate(request_policy.navigation_targets, start=1):
@@ -96,7 +98,9 @@ class ResolveProtection:
                 wait_until="domcontentloaded",
                 timeout=timeout_ms,
             )
-            await self.challenge_actuator.stabilize_page(page, attempt_index=attempt_index, timeout_ms=timeout_ms)
+            await self.challenge_actuator.stabilize_page(
+                page, attempt_index=attempt_index, timeout_ms=timeout_ms
+            )
             latest_assessment = await self.page_probe.assess_page(page, response)
             initial_decision = self.policy.decide_page_action(
                 ProtectionSnapshot.from_assessment(latest_assessment),

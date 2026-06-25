@@ -34,10 +34,19 @@ from curlwright.interfaces.contracts import (
     get_exit_code,
     serialize_output_payload,
 )
-from curlwright.interfaces.sarif import build_sarif_report, write_sarif_report, _level_for_error, _rule_id_for_exit_code
+from curlwright.interfaces.sarif import (
+    build_sarif_report,
+    write_sarif_report,
+    _level_for_error,
+    _rule_id_for_exit_code,
+)
 from curlwright.infrastructure.browser_stealth import chrome_major_version
 from curlwright.infrastructure.bypass_classifier import selector_exists
-from curlwright.infrastructure.protection_runtime import ConsoleTelemetry, PlaywrightChallengeActuator, PlaywrightPageProbe
+from curlwright.infrastructure.protection_runtime import (
+    ConsoleTelemetry,
+    PlaywrightChallengeActuator,
+    PlaywrightPageProbe,
+)
 
 from tests.helpers import make_execution_meta
 
@@ -45,7 +54,9 @@ from tests.helpers import make_execution_meta
 class FakeRuntime:
     def __init__(self, response: FetchResponse | None = None):
         self.calls: list[tuple[str, object]] = []
-        self.response = response or FetchResponse(status=200, headers={}, body="ok", url="https://example.com")
+        self.response = response or FetchResponse(
+            status=200, headers={}, body="ok", url="https://example.com"
+        )
 
     async def apply_request_context(self, page, request, extract_domain):
         self.calls.append(("apply", extract_domain(request.url)))
@@ -129,12 +140,16 @@ class FakePage:
 
 def test_contract_helpers_cover_success_and_failure_paths():
     result = ExecutionResult(
-        response=FetchResponse(status=200, headers={"x-test": "1"}, body="body", url="https://example.com"),
+        response=FetchResponse(
+            status=200, headers={"x-test": "1"}, body="body", url="https://example.com"
+        ),
         meta=make_execution_meta(),
     )
     failure = BypassFailure(
         "blocked",
-        assessment=BypassAssessment(outcome="blocked", final_url="https://example.com", indicators=["status:403"]),
+        assessment=BypassAssessment(
+            outcome="blocked", final_url="https://example.com", indicators=["status:403"]
+        ),
         artifact_dir="/tmp/artifacts",
     )
 
@@ -176,7 +191,10 @@ def test_sarif_helpers_cover_success_error_and_file_output(tmp_path):
     assert output.exists()
     assert json.loads(output.read_text())["version"] == "2.1.0"
 
-    assert sarif_facade.build_sarif_report(error=failure)["runs"][0]["results"][0]["level"] == "warning"
+    assert (
+        sarif_facade.build_sarif_report(error=failure)["runs"][0]["results"][0]["level"]
+        == "warning"
+    )
 
     with pytest.raises(ValueError):
         build_sarif_report()
@@ -189,16 +207,41 @@ def test_policy_covers_decision_matrix():
     turnstile = ProtectionSnapshot(state=ChallengeState.TURNSTILE, final_url="https://example.com")
     challenge = ProtectionSnapshot(state=ChallengeState.CHALLENGE, final_url="https://example.com")
 
-    assert policy.build_request_policy("https://example.com/path", TrustedSession(True)).navigation_targets[-1] == "https://example.com/"
-    assert policy.decide_page_action(clear, managed_challenge=False).action is BypassAction.RETURN_CLEAR
-    assert policy.decide_page_action(blocked, managed_challenge=False).action is BypassAction.FAIL_BLOCKED
-    assert policy.decide_page_action(turnstile, managed_challenge=False).action is BypassAction.RESOLVE_TURNSTILE
-    assert policy.decide_page_action(challenge, managed_challenge=True).action is BypassAction.WAIT_MANAGED_CHALLENGE
-    assert policy.decide_post_action(challenge, managed_challenge=False).action is BypassAction.ADVANCE_CHALLENGE
-    assert policy.decide_post_action(blocked, managed_challenge=False).action is BypassAction.FAIL_BLOCKED
+    assert (
+        policy.build_request_policy(
+            "https://example.com/path", TrustedSession(True)
+        ).navigation_targets[-1]
+        == "https://example.com/"
+    )
+    assert (
+        policy.decide_page_action(clear, managed_challenge=False).action
+        is BypassAction.RETURN_CLEAR
+    )
+    assert (
+        policy.decide_page_action(blocked, managed_challenge=False).action
+        is BypassAction.FAIL_BLOCKED
+    )
+    assert (
+        policy.decide_page_action(turnstile, managed_challenge=False).action
+        is BypassAction.RESOLVE_TURNSTILE
+    )
+    assert (
+        policy.decide_page_action(challenge, managed_challenge=True).action
+        is BypassAction.WAIT_MANAGED_CHALLENGE
+    )
+    assert (
+        policy.decide_post_action(challenge, managed_challenge=False).action
+        is BypassAction.ADVANCE_CHALLENGE
+    )
+    assert (
+        policy.decide_post_action(blocked, managed_challenge=False).action
+        is BypassAction.FAIL_BLOCKED
+    )
     outcome = policy.evaluate_fetch_result(challenge)
     assert outcome.kind == "blocked_response"
-    snapshot = ProtectionSnapshot.from_assessment(BypassAssessment(outcome="clear", final_url="https://example.com"))
+    snapshot = ProtectionSnapshot.from_assessment(
+        BypassAssessment(outcome="clear", final_url="https://example.com")
+    )
     assert snapshot.state is ChallengeState.CLEAR
 
 
@@ -236,13 +279,24 @@ async def test_use_cases_cover_prepare_resolve_fetch_persist_and_report():
     )
     assert console_events[0]["text"] == "hello"
 
-    turnstile_assessment = BypassAssessment(outcome="turnstile", final_url="https://example.com/path")
-    challenge_assessment = BypassAssessment(outcome="challenge", final_url="https://example.com/path")
+    turnstile_assessment = BypassAssessment(
+        outcome="turnstile", final_url="https://example.com/path"
+    )
+    challenge_assessment = BypassAssessment(
+        outcome="challenge", final_url="https://example.com/path"
+    )
     actuator = FakeActuator()
     resolver = ResolveProtection(
         policy=BypassPolicy(),
         page_probe=FakeProbe(
-            page_assessments=[turnstile_assessment, challenge_assessment, challenge_assessment, challenge_assessment, challenge_assessment, challenge_assessment],
+            page_assessments=[
+                turnstile_assessment,
+                challenge_assessment,
+                challenge_assessment,
+                challenge_assessment,
+                challenge_assessment,
+                challenge_assessment,
+            ],
             managed=[False, True, False, False, False, False],
         ),
         challenge_actuator=actuator,
@@ -278,8 +332,12 @@ async def test_use_cases_cover_prepare_resolve_fetch_persist_and_report():
     ) == [{"type": "log", "text": "hello"}]
 
     fetcher = ExecuteHttpFetch(
-        http_runtime=FakeRuntime(FetchResponse(status=200, headers={}, body="ok", url="https://example.com")),
-        page_probe=FakeProbe(response_assessment=BypassAssessment(outcome="clear", final_url="https://example.com")),
+        http_runtime=FakeRuntime(
+            FetchResponse(status=200, headers={}, body="ok", url="https://example.com")
+        ),
+        page_probe=FakeProbe(
+            response_assessment=BypassAssessment(outcome="clear", final_url="https://example.com")
+        ),
         artifact_store=FakeArtifactStore(),
         policy=BypassPolicy(),
     )
@@ -294,8 +352,12 @@ async def test_use_cases_cover_prepare_resolve_fetch_persist_and_report():
     assert artifact_dir is None
 
     blocked_fetcher = ExecuteHttpFetch(
-        http_runtime=FakeRuntime(FetchResponse(status=403, headers={}, body="blocked", url="https://example.com")),
-        page_probe=FakeProbe(response_assessment=BypassAssessment(outcome="blocked", final_url="https://example.com")),
+        http_runtime=FakeRuntime(
+            FetchResponse(status=403, headers={}, body="blocked", url="https://example.com")
+        ),
+        page_probe=FakeProbe(
+            response_assessment=BypassAssessment(outcome="blocked", final_url="https://example.com")
+        ),
         artifact_store=FakeArtifactStore(),
         policy=BypassPolicy(),
     )
@@ -308,23 +370,32 @@ async def test_use_cases_cover_prepare_resolve_fetch_persist_and_report():
         )
 
     report = BuildExecutionReport()
-    result = ExecutionResult(response=FetchResponse(status=200, headers={}, body="ok", url="https://example.com"))
+    result = ExecutionResult(
+        response=FetchResponse(status=200, headers={}, body="ok", url="https://example.com")
+    )
     policy = BypassPolicy()
     complete = report.complete(
         result=result,
         execution_meta=make_execution_meta(),
-        outcome=policy.evaluate_fetch_result(ProtectionSnapshot(state=ChallengeState.CLEAR, final_url="https://example.com", status_code=200)),
+        outcome=policy.evaluate_fetch_result(
+            ProtectionSnapshot(
+                state=ChallengeState.CLEAR, final_url="https://example.com", status_code=200
+            )
+        ),
         fallback_url="https://fallback",
     )
     assert complete.meta is not None
     assert complete.meta.final is not None
-    assert await resolver._apply_decision(
-        page=FakePage(),
-        decision=BypassDecision(BypassAction.FAIL_BLOCKED, "blocked"),
-        target_url="https://example.com",
-        timeout_ms=1,
-        attempt_index=1,
-    ) is False
+    assert (
+        await resolver._apply_decision(
+            page=FakePage(),
+            decision=BypassDecision(BypassAction.FAIL_BLOCKED, "blocked"),
+            target_url="https://example.com",
+            timeout_ms=1,
+            attempt_index=1,
+        )
+        is False
+    )
 
 
 def test_playwright_wrapper_exports_are_public():
@@ -339,7 +410,12 @@ def test_sarif_internal_mappings_cover_remaining_branches():
     assert _rule_id_for_exit_code(11) == "CW002"
     assert _rule_id_for_exit_code(12) == "CW003"
     assert _rule_id_for_exit_code(999) == "CW004"
-    assert _level_for_error(BypassFailure("blocked", assessment=BypassAssessment(outcome="blocked", final_url="x"))) == "warning"
+    assert (
+        _level_for_error(
+            BypassFailure("blocked", assessment=BypassAssessment(outcome="blocked", final_url="x"))
+        )
+        == "warning"
+    )
     assert _level_for_error(FileNotFoundError("missing")) == "error"
     assert _level_for_error(ValueError("bad")) == "error"
     assert _level_for_error(RuntimeError("boom")) == "error"
@@ -368,7 +444,12 @@ async def test_protection_runtime_components_cover_remaining_branches():
         async def content(self):
             raise RuntimeError("boom")
 
-    assert await probe.is_managed_challenge(type("ManagedPage", (), {"url": "https://example.com/__cf_chl_x"})()) is True
+    assert (
+        await probe.is_managed_challenge(
+            type("ManagedPage", (), {"url": "https://example.com/__cf_chl_x"})()
+        )
+        is True
+    )
     assert await probe.is_managed_challenge(ContentErrorPage()) is False
 
     actuator = PlaywrightChallengeActuator()
@@ -399,7 +480,11 @@ async def test_protection_runtime_components_cover_remaining_branches():
         timeout_ms=10,
     )
     await actuator.wait_for_managed_challenge(
-        WaitPage("https://example.com/__cf_chl_x", "<script>window._cf_chl_opt = 1</script>", wait_error=True),
+        WaitPage(
+            "https://example.com/__cf_chl_x",
+            "<script>window._cf_chl_opt = 1</script>",
+            wait_error=True,
+        ),
         timeout_ms=10,
     )
 
@@ -407,7 +492,9 @@ async def test_protection_runtime_components_cover_remaining_branches():
     await actuator.revisit_target(same_page, target_url="https://example.com/target", timeout_ms=10)
     assert same_page.goto_calls == []
     failing_page = WaitPage("https://example.com/other", "<html></html>", goto_error=True)
-    await actuator.revisit_target(failing_page, target_url="https://example.com/target", timeout_ms=10)
+    await actuator.revisit_target(
+        failing_page, target_url="https://example.com/target", timeout_ms=10
+    )
 
     class BoxLocator:
         def __init__(self, boxes):
@@ -418,6 +505,7 @@ async def test_protection_runtime_components_cover_remaining_branches():
 
         def nth(self, index):
             box = self.boxes[index]
+
             class Nth:
                 async def bounding_box(self_inner):
                     return box
@@ -487,7 +575,9 @@ async def test_protection_runtime_components_cover_remaining_branches():
 
         def locator(self, selector):
             if selector == "input[name='cf-turnstile-response']":
-                return InputLocator(count=1 if self.ready else 0, value="token" if self.ready else "")
+                return InputLocator(
+                    count=1 if self.ready else 0, value="token" if self.ready else ""
+                )
             if selector == "body":
                 return BodyLocator(text="verification successful")
             return BodyLocator(text="", error=not self.has_selectors)
@@ -499,9 +589,20 @@ async def test_protection_runtime_components_cover_remaining_branches():
             if self.wait_error:
                 raise RuntimeError("wait failure")
 
-    await actuator._wait_for_turnstile_progress(TurnstilePage(ready=True), timeout_ms=10, expect_interaction=False)
-    await actuator._wait_for_turnstile_progress(TurnstilePage(wait_error=True, ready=False, has_selectors=False), timeout_ms=10, expect_interaction=True)
-    assert await actuator._turnstile_response_ready(type("ReadyPage", (), {"locator": lambda self, _sel: InputLocator(error=True)})()) is False
+    await actuator._wait_for_turnstile_progress(
+        TurnstilePage(ready=True), timeout_ms=10, expect_interaction=False
+    )
+    await actuator._wait_for_turnstile_progress(
+        TurnstilePage(wait_error=True, ready=False, has_selectors=False),
+        timeout_ms=10,
+        expect_interaction=True,
+    )
+    assert (
+        await actuator._turnstile_response_ready(
+            type("ReadyPage", (), {"locator": lambda self, _sel: InputLocator(error=True)})()
+        )
+        is False
+    )
 
     class PageAny:
         async def title(self):

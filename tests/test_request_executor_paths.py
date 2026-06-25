@@ -55,7 +55,9 @@ class _ExecutorFixtureHandler(BaseFixtureHandler):
 
 def _start_executor_server():
     server = _ExecutorFixtureServer(("127.0.0.1", 0), _ExecutorFixtureHandler)
-    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
+    )
     thread.start()
     return server, thread
 
@@ -69,7 +71,10 @@ def test_domain_session_key_and_retry_user_agent_rotation():
     executor._effective_user_agent = first
 
     assert first != second
-    assert executor._get_domain_session_key(request) == f"example.com|http://proxy:8080|{first}|{os.path.normpath('/tmp/curlwright-profile-a')}"
+    assert (
+        executor._get_domain_session_key(request)
+        == f"example.com|http://proxy:8080|{first}|{os.path.normpath('/tmp/curlwright-profile-a')}"
+    )
 
 
 def test_pinned_user_agent_disables_rotation():
@@ -103,7 +108,9 @@ def test_has_trusted_session_requires_state_and_cookie_presence(tmp_path):
     assert executor._has_trusted_session(request) is False
 
     assert executor.cookie_manager is not None
-    executor.cookie_manager.cookies = [{"name": "session", "domain": ".example.com", "value": "abc"}]
+    executor.cookie_manager.cookies = [
+        {"name": "session", "domain": ".example.com", "value": "abc"}
+    ]
     assert executor._has_trusted_session(request) is True
 
 
@@ -132,7 +139,9 @@ def test_has_trusted_session_returns_false_when_cookie_persistence_is_disabled(t
 
 @pytest.mark.asyncio
 async def test_reset_runtime_state_clears_initialized_browser():
-    executor = RequestExecutor(headless=True, no_gui=True, profile_dir=".artifacts/test-reset-profile")
+    executor = RequestExecutor(
+        headless=True, no_gui=True, profile_dir=".artifacts/test-reset-profile"
+    )
     request = CurlRequest(url="https://example.com")
 
     await executor._ensure_initialized(request, user_agent=executor._get_retry_user_agent(0))
@@ -148,7 +157,9 @@ async def test_reset_runtime_state_clears_initialized_browser():
 
 @pytest.mark.asyncio
 async def test_ensure_initialized_reuses_matching_signature_and_rebuilds_on_change():
-    executor = RequestExecutor(headless=True, no_gui=True, profile_dir=".artifacts/test-reuse-profile")
+    executor = RequestExecutor(
+        headless=True, no_gui=True, profile_dir=".artifacts/test-reuse-profile"
+    )
     request = CurlRequest(url="https://example.com")
     auth_request = CurlRequest(url="https://example.com", auth=("alice", "secret"))
 
@@ -160,7 +171,9 @@ async def test_ensure_initialized_reuses_matching_signature_and_rebuilds_on_chan
         await executor._ensure_initialized(request, user_agent=executor._get_retry_user_agent(0))
         assert executor.browser_manager is first_browser_manager
 
-        await executor._ensure_initialized(auth_request, user_agent=executor._get_retry_user_agent(0))
+        await executor._ensure_initialized(
+            auth_request, user_agent=executor._get_retry_user_agent(0)
+        )
         assert executor.browser_manager is not first_browser_manager
         assert first_browser_manager.browser is None
     finally:
@@ -170,14 +183,18 @@ async def test_ensure_initialized_reuses_matching_signature_and_rebuilds_on_chan
 @pytest.mark.asyncio
 async def test_perform_fetch_request_supports_head_without_body():
     server, thread = _start_executor_server()
-    executor = RequestExecutor(headless=True, no_gui=True, profile_dir=".artifacts/test-head-profile")
+    executor = RequestExecutor(
+        headless=True, no_gui=True, profile_dir=".artifacts/test-head-profile"
+    )
     request = CurlRequest(url=f"http://127.0.0.1:{server.server_port}/head", method="HEAD")
 
     try:
         await executor._ensure_initialized(request, user_agent=executor._get_retry_user_agent(0))
         assert executor.browser_manager is not None
         page = await executor.browser_manager.create_page()
-        await page.goto(f"http://127.0.0.1:{server.server_port}/json", wait_until="domcontentloaded")
+        await page.goto(
+            f"http://127.0.0.1:{server.server_port}/json", wait_until="domcontentloaded"
+        )
         payload = await executor.http_runtime.perform_fetch_request(page, request, 2_000)
 
         assert payload.status == 200

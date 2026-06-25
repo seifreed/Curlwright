@@ -157,14 +157,21 @@ async def test_resolve_protection_apply_decision_covers_action_branches():
         telemetry=None,
     )
 
-    assert await resolver._apply_decision(
-        page=object(),
-        decision=type("Decision", (), {"action": BypassAction.FAIL_BLOCKED, "revisit_target": False})(),
-        target_url="https://example.com/path",
-        timeout_ms=100,
-        attempt_index=2,
-    ) is False
-    decision = type("Decision", (), {"action": BypassAction.ADVANCE_CHALLENGE, "revisit_target": False})()
+    assert (
+        await resolver._apply_decision(
+            page=object(),
+            decision=type(
+                "Decision", (), {"action": BypassAction.FAIL_BLOCKED, "revisit_target": False}
+            )(),
+            target_url="https://example.com/path",
+            timeout_ms=100,
+            attempt_index=2,
+        )
+        is False
+    )
+    decision = type(
+        "Decision", (), {"action": BypassAction.ADVANCE_CHALLENGE, "revisit_target": False}
+    )()
     await resolver._apply_decision(
         page=object(),
         decision=decision,
@@ -174,7 +181,9 @@ async def test_resolve_protection_apply_decision_covers_action_branches():
     )
     await resolver._apply_decision(
         page=object(),
-        decision=type("Decision", (), {"action": BypassAction.WAIT_MANAGED_CHALLENGE, "revisit_target": True})(),
+        decision=type(
+            "Decision", (), {"action": BypassAction.WAIT_MANAGED_CHALLENGE, "revisit_target": True}
+        )(),
         target_url="https://example.com/path",
         timeout_ms=100,
         attempt_index=1,
@@ -345,7 +354,9 @@ async def test_playwright_runtime_and_application_executor_remaining_paths(tmp_p
     )()
     request = CurlRequest(url="https://example.com/path")
     await executor._ensure_initialized(request, user_agent=executor._get_retry_user_agent(0))
-    await executor.http_runtime.apply_request_context(FakePage(closed=False), request, executor._extract_domain)
+    await executor.http_runtime.apply_request_context(
+        FakePage(closed=False), request, executor._extract_domain
+    )
     result = await executor._execute_request(request)
     assert result.response.status == 200
     assert manager.created == 2
@@ -411,8 +422,8 @@ async def test_protection_runtime_remaining_defensive_paths(monkeypatch):
 
     actuator._turnstile_response_ready = fake_ready
     actuator._page_contains_any = fake_contains
-    monkeypatch.setattr(
-        "curlwright.infrastructure.protection_runtime.selector_exists", fake_exists
+    monkeypatch.setattr("curlwright.infrastructure.protection_runtime.selector_exists", fake_exists)
+    await actuator._wait_for_turnstile_progress(
+        SelectorPage(), timeout_ms=10, expect_interaction=True
     )
-    await actuator._wait_for_turnstile_progress(SelectorPage(), timeout_ms=10, expect_interaction=True)
     assert selector_calls["count"] >= 1

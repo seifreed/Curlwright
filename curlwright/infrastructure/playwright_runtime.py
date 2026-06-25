@@ -33,7 +33,9 @@ class PlaywrightRequestRuntime:
             trusted_session=trusted_session,
         )
 
-    async def perform_fetch_request(self, page, request: CurlRequest, timeout_ms: int) -> FetchResponse:
+    async def perform_fetch_request(
+        self, page, request: CurlRequest, timeout_ms: int
+    ) -> FetchResponse:
         fetch_options = self.build_fetch_options(request)
         response = await page.evaluate(
             """
@@ -117,15 +119,13 @@ class PlaywrightRequestRuntime:
             pass
 
         try:
-            await page.evaluate(
-                """
+            await page.evaluate("""
                 () => {
                     window.focus();
                     document.dispatchEvent(new Event('mousemove', { bubbles: true }));
                     document.dispatchEvent(new Event('scroll', { bubbles: true }));
                 }
-                """
-            )
+                """)
         except Exception:
             pass
 

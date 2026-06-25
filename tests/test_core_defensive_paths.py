@@ -10,7 +10,9 @@ from curlwright.infrastructure.protection_runtime import (
 
 
 class FailingLocator:
-    def __init__(self, *, count_error: Exception | None = None, inner_text_error: Exception | None = None):
+    def __init__(
+        self, *, count_error: Exception | None = None, inner_text_error: Exception | None = None
+    ):
         self._count_error = count_error
         self._inner_text_error = inner_text_error
 
@@ -133,7 +135,9 @@ async def test_challenge_actuator_challenge_progress_ignores_reload_errors():
         async def reload(self, *_args, **_kwargs):
             raise RuntimeError("reload failed")
 
-    await PlaywrightChallengeActuator().advance_challenge(ReloadFailPage(), attempt_index=1, timeout_ms=100)
+    await PlaywrightChallengeActuator().advance_challenge(
+        ReloadFailPage(), attempt_index=1, timeout_ms=100
+    )
 
 
 @pytest.mark.asyncio

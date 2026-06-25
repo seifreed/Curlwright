@@ -166,10 +166,18 @@ def test_cli_json_output_contains_meta():
     payload = json.loads(result.stdout)
     assert_payload_contract(payload, kind="curlwright-result", ok=True, exit_code=0)
     assert payload["response"]["status"] == 200
-    assert os.path.normpath(payload["meta"]["runtime"]["artifact_dir"]) == os.path.normpath(".artifacts/test-json")
-    assert os.path.normpath(payload["meta"]["runtime"]["cookie_file"]) == os.path.normpath(".artifacts/test-json/cookies.pkl")
-    assert os.path.normpath(payload["meta"]["runtime"]["state_file"]) == os.path.normpath(".artifacts/test-json/state.json")
-    assert os.path.normpath(payload["meta"]["runtime"]["profile_dir"]) == os.path.normpath(".artifacts/test-json/profile")
+    assert os.path.normpath(payload["meta"]["runtime"]["artifact_dir"]) == os.path.normpath(
+        ".artifacts/test-json"
+    )
+    assert os.path.normpath(payload["meta"]["runtime"]["cookie_file"]) == os.path.normpath(
+        ".artifacts/test-json/cookies.pkl"
+    )
+    assert os.path.normpath(payload["meta"]["runtime"]["state_file"]) == os.path.normpath(
+        ".artifacts/test-json/state.json"
+    )
+    assert os.path.normpath(payload["meta"]["runtime"]["profile_dir"]) == os.path.normpath(
+        ".artifacts/test-json/profile"
+    )
     assert payload["meta"]["attempts"][0]["outcome"] == "success"
 
 
@@ -181,6 +189,7 @@ def test_entrypoint_exits_non_zero_on_invalid_arguments():
 
     assert result.returncode == 2
     assert "usage: curlwright" in result.stderr.lower()
+
 
 def test_root_script_helpers_cover_file_and_verbose_branches(tmp_path, capsys):
     spec = importlib.util.spec_from_file_location(
