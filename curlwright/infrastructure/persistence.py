@@ -111,8 +111,14 @@ class DomainStateStore:
         if self._loaded:
             return
         if self.state_file.exists():
-            raw_state = json.loads(self.state_file.read_text())
-            self._state = {key: DomainBypassState(**value) for key, value in raw_state.items()}
+            try:
+                raw_state = json.loads(self.state_file.read_text())
+                self._state = {key: DomainBypassState(**value) for key, value in raw_state.items()}
+            except (OSError, ValueError, TypeError) as error:
+                logger.warning(
+                    "Ignoring unreadable bypass state file %s: %s", self.state_file, error
+                )
+                self._state = {}
         self._loaded = True
 
     def _persist(self) -> None:

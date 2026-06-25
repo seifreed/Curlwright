@@ -30,6 +30,31 @@ class FakeCookieContext:
         self.added_cookies.extend(cookies)
 
 
+def test_state_store_ignores_corrupt_state_file(tmp_path, caplog):
+    state_file = tmp_path / "state.json"
+    state_file.write_text("{not-json", encoding="utf-8")
+    store = DomainStateStore(str(state_file))
+
+    with caplog.at_level(logging.WARNING, logger=PERSISTENCE_LOGGER):
+        assert store.is_trusted("any|key") is False
+        assert store.get("any|key") is None
+
+    assert any("Ignoring unreadable bypass state file" in r.getMessage() for r in caplog.records)
+
+    # The store stays usable: a fresh write recovers cleanly.
+    store.mark_success(
+        domain_key="example.com|direct|ua",
+        domain="example.com",
+        user_agent="ua",
+        proxy=None,
+        profile_dir=None,
+        final_url="https://example.com/ok",
+        cookie_names=[],
+        artifact_dir=None,
+    )
+    assert DomainStateStore(str(state_file)).get("example.com|direct|ua") is not None
+
+
 class FailingCookieContext:
     async def cookies(self):
         raise RuntimeError("cookie failure")
