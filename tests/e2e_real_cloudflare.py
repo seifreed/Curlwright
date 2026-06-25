@@ -19,7 +19,6 @@ from curlwright.executor import RequestExecutor
 
 @dataclass
 class RealBypassConfig:
-    base_url: str
     challenge_url: str
     turnstile_url: str
     blocked_url: str
@@ -30,7 +29,6 @@ class RealBypassConfig:
     @classmethod
     def from_env(cls) -> "RealBypassConfig":
         required_keys = {
-            "CURLWRIGHT_E2E_BASE_URL": "Base protected origin behind Cloudflare",
             "CURLWRIGHT_E2E_CHALLENGE_URL": "URL that triggers the browser challenge",
             "CURLWRIGHT_E2E_TURNSTILE_URL": "URL protected by Turnstile",
             "CURLWRIGHT_E2E_BLOCKED_URL": "URL expected to remain blocked",
@@ -47,7 +45,6 @@ class RealBypassConfig:
             )
 
         return cls(
-            base_url=os.environ["CURLWRIGHT_E2E_BASE_URL"],
             challenge_url=os.environ["CURLWRIGHT_E2E_CHALLENGE_URL"],
             turnstile_url=os.environ["CURLWRIGHT_E2E_TURNSTILE_URL"],
             blocked_url=os.environ["CURLWRIGHT_E2E_BLOCKED_URL"],
