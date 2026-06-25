@@ -20,6 +20,24 @@ type CookieNames = list[str]
 logger = setup_logger(__name__)
 
 
+def _domains_related(target: str, cookie_domain: str) -> bool:
+    """Return True when target and a cookie's domain are the same host or one
+    is a subdomain of the other, matching on dot boundaries.
+
+    This avoids the naive substring check that wrongly related, e.g.,
+    ``example.com`` to ``evil-example.com``.
+    """
+    target = target.lstrip(".").lower()
+    cookie_domain = cookie_domain.lstrip(".").lower()
+    if not target or not cookie_domain:
+        return False
+    return (
+        target == cookie_domain
+        or target.endswith(f".{cookie_domain}")
+        or cookie_domain.endswith(f".{target}")
+    )
+
+
 class CookieManager:
     """Manages browser cookies for session persistence."""
 
@@ -88,12 +106,11 @@ class CookieManager:
             return False
 
     def get_cookies_for_domain(self, domain: str) -> CookieJar:
-        domain_cookies = []
-        for cookie in self.cookies:
-            cookie_domain = str(cookie.get("domain", ""))
-            if domain in cookie_domain or cookie_domain in domain:
-                domain_cookies.append(cookie)
-        return domain_cookies
+        return [
+            cookie
+            for cookie in self.cookies
+            if _domains_related(domain, str(cookie.get("domain", "")))
+        ]
 
 
 class DomainStateStore:

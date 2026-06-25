@@ -104,6 +104,24 @@ def test_domain_state_store_persists_success_and_failure(tmp_path):
     assert failed_record.failure_count == 1
 
 
+def test_cookie_domain_matching_respects_dot_boundaries(tmp_path):
+    manager = CookieManager(str(tmp_path / "cookies.json"))
+    manager.cookies = [
+        {"name": "exact", "value": "1", "domain": "example.com"},
+        {"name": "sub", "value": "2", "domain": "api.example.com"},
+        {"name": "dotted", "value": "3", "domain": ".example.com"},
+        {"name": "lookalike", "value": "4", "domain": "evil-example.com"},
+        {"name": "substring", "value": "5", "domain": "ample.co"},
+    ]
+
+    names = {cookie["name"] for cookie in manager.get_cookies_for_domain("example.com")}
+    assert names == {"exact", "sub", "dotted"}
+    assert manager.has_cookies_for_domain("example.com") is True
+
+    # A site that merely shares a substring must not be treated as related.
+    assert manager.has_cookies_for_domain("notexample.com") is False
+
+
 def test_state_store_logs_trust_transitions(tmp_path, caplog):
     store = DomainStateStore(str(tmp_path / "state.json"))
     domain_key = "example.com|direct|ua"
