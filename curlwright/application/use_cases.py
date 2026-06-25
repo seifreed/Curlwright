@@ -20,6 +20,9 @@ from curlwright.domain import (
     TelemetryPort,
 )
 from curlwright.domain.policy import BypassAction, BypassDecision, BypassPolicy, TrustedSession
+from curlwright.infrastructure.logging import setup_logger
+
+logger = setup_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -114,6 +117,9 @@ class ResolveProtection:
                 timeout_ms=timeout_ms,
                 attempt_index=attempt_index,
             ):
+                logger.info(
+                    "Bypass reached a clear state for %s on attempt %s", target_url, attempt_index
+                )
                 return console_events
 
             latest_assessment = await self.page_probe.assess_page(page, None)
@@ -128,6 +134,9 @@ class ResolveProtection:
                 timeout_ms=timeout_ms,
                 attempt_index=attempt_index,
             ):
+                logger.info(
+                    "Bypass reached a clear state for %s on attempt %s", target_url, attempt_index
+                )
                 return console_events
 
         if latest_assessment is None:
@@ -153,6 +162,12 @@ class ResolveProtection:
         timeout_ms: int,
         attempt_index: int,
     ) -> bool:
+        logger.debug(
+            "Applying bypass action %s for %s (attempt %s)",
+            decision.action.name,
+            target_url,
+            attempt_index,
+        )
         if decision.action is BypassAction.RETURN_CLEAR:
             return True
         if decision.action is BypassAction.FAIL_BLOCKED:
@@ -205,6 +220,12 @@ class ExecuteHttpFetch:
         if outcome.kind == "success":
             return response, outcome, None
 
+        logger.warning(
+            "Final response for %s still looks blocked (HTTP %s, outcome=%s)",
+            request.url,
+            response.status,
+            outcome.kind,
+        )
         artifact_dir = await self.artifact_store.collect(
             page=page,
             assessment=assessment,
