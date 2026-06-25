@@ -80,7 +80,21 @@ class CookieManager:
             Path(cookie_file) if cookie_file else Path.home() / ".curlwright" / "cookies.json"
         )
         self.cookie_file.parent.mkdir(parents=True, exist_ok=True)
-        self.cookies: CookieJar = []
+        # Load the persisted jar eagerly so has_cookies_for_domain reflects it
+        # before any browser context is available (the trusted-session check
+        # runs before warm-up loads cookies into the context).
+        self.cookies: CookieJar = self._read_persisted_jar()
+
+    def _read_persisted_jar(self) -> CookieJar:
+        if not self.cookie_file.exists():
+            return []
+        try:
+            with open(self.cookie_file, "r", encoding="utf-8") as file_handle:
+                data = json.load(file_handle)
+        except (OSError, ValueError) as error:
+            logger.warning("Ignoring unreadable cookie jar %s: %s", self.cookie_file, error)
+            return []
+        return data if isinstance(data, list) else []
 
     async def save_cookies(self, context) -> None:
         try:
@@ -91,17 +105,14 @@ class CookieManager:
             logger.error("Failed to save cookies: %s", error)
 
     async def load_cookies(self, context) -> bool:
-        try:
-            if not self.cookie_file.exists():
-                logger.info("No cookie file found")
-                return False
-            with open(self.cookie_file, "r", encoding="utf-8") as file_handle:
-                self.cookies = json.load(file_handle)
-            if self.cookies:
-                await context.add_cookies(self.cookies)
-                logger.info("Loaded %s cookies", len(self.cookies))
-                return True
+        self.cookies = self._read_persisted_jar()
+        if not self.cookies:
+            logger.info("No cookies to load")
             return False
+        try:
+            await context.add_cookies(self.cookies)
+            logger.info("Loaded %s cookies", len(self.cookies))
+            return True
         except Exception as error:
             logger.error("Failed to load cookies: %s", error)
             return False

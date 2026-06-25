@@ -159,6 +159,23 @@ def test_credential_files_are_written_owner_only(tmp_path):
     assert stat.S_IMODE(export_file.stat().st_mode) == 0o600
 
 
+def test_cookie_manager_reads_persisted_jar_on_construction(tmp_path):
+    # Regression: the trusted-session check calls has_cookies_for_domain before
+    # any browser context exists to run async load_cookies(), so a freshly
+    # constructed manager must already reflect the persisted jar.
+    cookie_file = tmp_path / "cookies.json"
+    cookie_file.write_text(
+        json.dumps([{"name": "sess", "value": "x", "domain": "example.com", "path": "/"}]),
+        encoding="utf-8",
+    )
+
+    manager = CookieManager(str(cookie_file))
+
+    assert manager.cookies, "persisted jar should be loaded eagerly"
+    assert manager.has_cookies_for_domain("example.com") is True
+    assert manager.has_cookies_for_domain("sub.example.com") is True
+
+
 def test_cookie_domain_matching_respects_dot_boundaries(tmp_path):
     manager = CookieManager(str(tmp_path / "cookies.json"))
     manager.cookies = [
