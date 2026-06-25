@@ -10,9 +10,12 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from curlwright.domain import BypassAssessment
+from curlwright.infrastructure.logging import setup_logger
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
+
+logger = setup_logger(__name__)
 
 type ConsoleEvent = dict[str, str]
 
@@ -46,4 +49,5 @@ class FailureArtifactStore:
         await page.screenshot(path=str(screenshot_path), full_page=True)
         assessment_path.write_text(json.dumps(asdict(assessment), indent=2, sort_keys=True))
         console_path.write_text(json.dumps(console_events, indent=2, sort_keys=True))
+        logger.info("Saved %s diagnostics for %s to %s", label, assessment.outcome, artifact_dir)
         return artifact_dir

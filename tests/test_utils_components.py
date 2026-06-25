@@ -4,12 +4,18 @@ import asyncio
 import logging
 import time
 import uuid
+from pathlib import Path
 
 import pytest
 
 from curlwright.cli_parser import CLI
+from curlwright.domain import BypassAssessment
+from curlwright.infrastructure.bypass_artifacts import FailureArtifactStore
 from curlwright.infrastructure.logging import setup_logger
 from curlwright.infrastructure.persistence import CookieManager, DomainStateStore
+
+PERSISTENCE_LOGGER = "curlwright.infrastructure.persistence"
+ARTIFACT_LOGGER = "curlwright.infrastructure.bypass_artifacts"
 
 
 class FakeCookieContext:
@@ -71,6 +77,74 @@ def test_domain_state_store_persists_success_and_failure(tmp_path):
     assert failed_record is not None
     assert failed_record.last_status == "failed"
     assert failed_record.failure_count == 1
+
+
+def test_state_store_logs_trust_transitions(tmp_path, caplog):
+    store = DomainStateStore(str(tmp_path / "state.json"))
+    domain_key = "example.com|direct|ua"
+    common = {
+        "domain_key": domain_key,
+        "domain": "example.com",
+        "user_agent": "ua",
+        "proxy": None,
+        "profile_dir": str(tmp_path / "profile"),
+    }
+
+    with caplog.at_level(logging.INFO, logger=PERSISTENCE_LOGGER):
+        store.mark_success(
+            **common,
+            final_url="https://example.com/ok",
+            cookie_names=["cf_clearance"],
+            artifact_dir=None,
+        )
+    assert any(
+        "Marked example.com|direct|ua as trusted" in r.getMessage()
+        for r in caplog.records
+        if r.levelno == logging.INFO
+    )
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger=PERSISTENCE_LOGGER):
+        store.mark_failure(
+            **common,
+            final_url="https://example.com/blocked",
+            artifact_dir=None,
+        )
+    assert any(
+        "Marked example.com|direct|ua as failed" in r.getMessage()
+        for r in caplog.records
+        if r.levelno == logging.WARNING
+    )
+
+
+def test_artifact_store_logs_destination(tmp_path, caplog):
+    class _FakePage:
+        url = "https://example.com/blocked"
+
+        async def content(self):
+            return "<html>blocked</html>"
+
+        async def screenshot(self, *, path, full_page):
+            Path(path).write_bytes(b"png")
+
+    store = FailureArtifactStore(tmp_path / "artifacts")
+    assessment = BypassAssessment(outcome="blocked", final_url="https://example.com/blocked")
+
+    with caplog.at_level(logging.INFO, logger=ARTIFACT_LOGGER):
+        artifact_dir = asyncio.run(
+            store.collect(
+                page=_FakePage(),
+                assessment=assessment,
+                console_events=[{"type": "error", "text": "boom"}],
+                label="bypass-failure",
+            )
+        )
+
+    assert artifact_dir.exists()
+    assert any(
+        "Saved bypass-failure diagnostics" in r.getMessage() and str(artifact_dir) in r.getMessage()
+        for r in caplog.records
+    )
 
 
 def test_cookie_manager_save_load_export_import_and_clear(tmp_path):

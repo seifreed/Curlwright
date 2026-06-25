@@ -179,6 +179,12 @@ class DomainStateStore:
         record.cookie_names = sorted(set(cookie_names))
         record.last_artifact_dir = artifact_dir
         self._persist()
+        logger.info(
+            "Marked %s as trusted (success_count=%s, cookies=%s)",
+            domain_key,
+            record.success_count,
+            len(record.cookie_names),
+        )
 
     def mark_failure(
         self,
@@ -203,3 +209,4 @@ class DomainStateStore:
         record.last_url = final_url
         record.last_artifact_dir = artifact_dir
         self._persist()
+        logger.warning("Marked %s as failed (failure_count=%s)", domain_key, record.failure_count)
