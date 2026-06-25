@@ -28,7 +28,7 @@ def _resolve_curl_command(args) -> str:
     if args.file:
         return Path(args.file).read_text().strip()
     if args.curl:
-        return args.curl
+        return str(args.curl)
     raise ValueError("No curl command provided")
 
 

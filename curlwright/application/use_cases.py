@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from curlwright.domain import (
     ArtifactStorePort,
@@ -23,7 +24,7 @@ from curlwright.domain.policy import BypassAction, BypassDecision, BypassPolicy,
 
 @dataclass(frozen=True)
 class PreparedSession:
-    page: object
+    page: Any
     timeout_ms: int
     trusted_session: bool
     domain: str
@@ -129,7 +130,8 @@ class ResolveProtection:
             ):
                 return console_events
 
-        assert latest_assessment is not None
+        if latest_assessment is None:
+            raise RuntimeError("Bypass produced no navigation targets to assess")
         artifact_dir = await self.artifact_store.collect(
             page=page,
             assessment=latest_assessment,
@@ -222,12 +224,12 @@ class BuildExecutionReport:
         *,
         result: ExecutionResult,
         execution_meta: ExecutionMetadata,
-        outcome: ExecutionOutcome,
+        outcome: ExecutionOutcome | None,
         fallback_url: str,
     ) -> ExecutionResult:
         execution_meta.final = FinalMetadata(
-            status=outcome.status or result.response.status,
-            url=outcome.final_url or result.response.url or fallback_url,
+            status=(outcome.status if outcome else None) or result.response.status,
+            url=(outcome.final_url if outcome else None) or result.response.url or fallback_url,
         )
         result.meta = execution_meta
         return result

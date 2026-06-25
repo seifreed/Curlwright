@@ -83,7 +83,7 @@ def compact_text(raw_text: str, limit: int = 500) -> str:
 
 async def selector_exists(page, selector: str) -> bool:
     try:
-        return await page.locator(selector).count() > 0
+        return bool(await page.locator(selector).count() > 0)
     except Exception:
         return False
 

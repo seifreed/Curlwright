@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Protocol
+from pathlib import Path
+from typing import TYPE_CHECKING, Protocol
 
 from curlwright.runtime import ensure_supported_python
+
+if TYPE_CHECKING:
+    from curlwright.domain.policy import ExecutionOutcome
 
 ensure_supported_python()
 
@@ -86,9 +90,15 @@ class FetchResponse:
 
     @classmethod
     def from_payload(cls, payload: ResponsePayload) -> "FetchResponse":
+        status_raw = payload["status"]
+        headers_raw = payload.get("headers", {})
         return cls(
-            status=int(payload["status"]),
-            headers=dict(payload.get("headers", {})),
+            status=int(status_raw) if isinstance(status_raw, (int, str)) else 0,
+            headers=(
+                {str(k): str(v) for k, v in headers_raw.items()}
+                if isinstance(headers_raw, dict)
+                else {}
+            ),
             body=str(payload.get("body", "")),
             url=str(payload["url"]) if "url" in payload and payload["url"] is not None else None,
         )
@@ -188,7 +198,7 @@ class ExecutionMetadata:
 @dataclass
 class ExecutionResult:
     response: FetchResponse
-    outcome: object | None = None
+    outcome: "ExecutionOutcome | None" = None
     meta: ExecutionMetadata | None = None
 
     def to_payload(self) -> ResponsePayload:
@@ -237,7 +247,7 @@ class BrowserManagerFactoryPort(Protocol):
 
 
 class CookieStorePort(Protocol):
-    cookie_file: object
+    cookie_file: Path
 
     async def save_cookies(self, context) -> object: ...
 
@@ -269,7 +279,7 @@ class ChallengeActuatorPort(Protocol):
 
 
 class ArtifactStorePort(Protocol):
-    artifact_root: object
+    artifact_root: Path
 
     async def collect(
         self,
@@ -286,7 +296,7 @@ class TelemetryPort(Protocol):
 
 
 class PersistedSessionPort(Protocol):
-    state_file: object
+    state_file: Path
 
     def get(self, domain_key: str) -> DomainBypassState | None: ...
 

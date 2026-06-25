@@ -91,7 +91,7 @@ class CookieManager:
     def get_cookies_for_domain(self, domain: str) -> CookieJar:
         domain_cookies = []
         for cookie in self.cookies:
-            cookie_domain = cookie.get("domain", "")
+            cookie_domain = str(cookie.get("domain", ""))
             if domain in cookie_domain or cookie_domain in domain:
                 domain_cookies.append(cookie)
         return domain_cookies

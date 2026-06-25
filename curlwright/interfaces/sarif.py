@@ -104,7 +104,8 @@ def _build_invocation(
             },
         }
 
-    assert error is not None
+    if error is None:
+        raise ValueError("Either a result or an error is required")
     payload = build_failure_payload(error)
     return {
         "executionSuccessful": False,
@@ -124,12 +125,14 @@ def _build_results(
 ) -> list[dict[str, object]]:
     if result is not None:
         payload = build_success_payload(result)
+        response = payload["response"]
+        status = response["status"] if isinstance(response, dict) else "unknown"
         return [
             {
                 "ruleId": "CW000",
                 "level": "note",
                 "message": {
-                    "text": f"CurlWright request succeeded with HTTP {payload['response']['status']}",
+                    "text": f"CurlWright request succeeded with HTTP {status}",
                 },
                 "properties": {
                     "curlwrightPayloadKind": SUCCESS_KIND,
@@ -138,7 +141,8 @@ def _build_results(
             }
         ]
 
-    assert error is not None
+    if error is None:
+        raise ValueError("Either a result or an error is required")
     payload = build_failure_payload(error)
     sarif_result: dict[str, object] = {
         "ruleId": _rule_id_for_exit_code(get_exit_code(error)),

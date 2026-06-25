@@ -148,14 +148,19 @@ class PlaywrightRequestRuntime:
 
     def _ensure_post_content_type(self, fetch_options: FetchOptions) -> None:
         headers = fetch_options["headers"]
-        assert isinstance(headers, dict)
+        if not isinstance(headers, dict):
+            raise TypeError("fetch headers must be a mapping")
         if any(header.lower() == "content-type" for header in headers):
             return
-        try:
-            json.loads(fetch_options["body"])
-            headers["Content-Type"] = "application/json"
-        except (TypeError, json.JSONDecodeError):
-            headers["Content-Type"] = "application/x-www-form-urlencoded"
+        body = fetch_options["body"]
+        content_type = "application/x-www-form-urlencoded"
+        if isinstance(body, str):
+            try:
+                json.loads(body)
+                content_type = "application/json"
+            except json.JSONDecodeError:
+                pass
+        headers["Content-Type"] = content_type
 
     def extract_base_url(self, url: str) -> str:
         from urllib.parse import urlparse

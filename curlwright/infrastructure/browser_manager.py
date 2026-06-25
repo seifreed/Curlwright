@@ -10,7 +10,7 @@ from curlwright.runtime import ensure_supported_python
 ensure_supported_python()
 
 if TYPE_CHECKING:
-    from playwright.async_api import Browser, BrowserContext, Page
+    from playwright.async_api import Browser, BrowserContext, Page, Playwright
 
 type HttpCredentials = dict[str, str]
 type ProxyConfig = dict[str, str]
@@ -44,7 +44,7 @@ class BrowserManager:
             Path(profile_dir) if profile_dir else Path.home() / ".curlwright" / "browser-profile"
         )
         self.profile_dir.mkdir(parents=True, exist_ok=True)
-        self.playwright = None
+        self.playwright: "Playwright | None" = None
         self.browser: Browser | None = None
         self.context: BrowserContext | None = None
         self.page: Page | None = None
