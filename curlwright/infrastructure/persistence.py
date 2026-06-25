@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -31,6 +33,25 @@ def _restrict_to_owner(path: Path) -> None:
         path.chmod(0o600)
     except OSError as error:
         logger.debug("Could not restrict permissions on %s: %s", path, error)
+
+
+def _atomic_write_private(path: Path, data: str) -> None:
+    """Write a credential file atomically with owner-only permissions.
+
+    The data is written to a temporary file in the same directory (created
+    0600 by mkstemp) and then os.replace()d into place, so an interrupted or
+    concurrent write can never leave a truncated/corrupt jar or state file and
+    the contents are never world-readable, even briefly.
+    """
+    fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(data)
+        os.replace(tmp_path, path)
+    except OSError:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 def _domains_related(target: str, cookie_domain: str) -> bool:
@@ -64,9 +85,7 @@ class CookieManager:
     async def save_cookies(self, context) -> None:
         try:
             self.cookies = await context.cookies()
-            with open(self.cookie_file, "w", encoding="utf-8") as file_handle:
-                json.dump(self.cookies, file_handle)
-            _restrict_to_owner(self.cookie_file)
+            _atomic_write_private(self.cookie_file, json.dumps(self.cookies))
             logger.info("Saved %s cookies to %s", len(self.cookies), self.cookie_file)
         except Exception as error:
             logger.error("Failed to save cookies: %s", error)
@@ -112,9 +131,7 @@ class CookieManager:
         try:
             with open(input_file, "r", encoding="utf-8") as file_handle:
                 self.cookies = json.load(file_handle)
-            with open(self.cookie_file, "w", encoding="utf-8") as file_handle:
-                json.dump(self.cookies, file_handle)
-            _restrict_to_owner(self.cookie_file)
+            _atomic_write_private(self.cookie_file, json.dumps(self.cookies))
             logger.info("Imported %s cookies from %s", len(self.cookies), input_file)
             return True
         except Exception as error:
@@ -156,8 +173,9 @@ class DomainStateStore:
 
     def _persist(self) -> None:
         serialized_state = {key: asdict(value) for key, value in self._state.items()}
-        self.state_file.write_text(json.dumps(serialized_state, indent=2, sort_keys=True))
-        _restrict_to_owner(self.state_file)
+        _atomic_write_private(
+            self.state_file, json.dumps(serialized_state, indent=2, sort_keys=True)
+        )
 
     def get(self, domain_key: str) -> DomainBypassState | None:
         self._ensure_loaded()

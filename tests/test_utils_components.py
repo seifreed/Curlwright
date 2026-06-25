@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import stat
@@ -104,6 +105,32 @@ def test_domain_state_store_persists_success_and_failure(tmp_path):
     assert failed_record is not None
     assert failed_record.last_status == "failed"
     assert failed_record.failure_count == 1
+
+
+def test_credential_writes_are_atomic_and_leave_no_temp_files(tmp_path):
+    cookie_file = tmp_path / "cookies.json"
+    manager = CookieManager(str(cookie_file))
+    cookies = [{"name": "cf_clearance", "value": "v", "domain": "example.com"}]
+    asyncio.run(manager.save_cookies(FakeCookieContext(cookies)))
+
+    store = DomainStateStore(str(tmp_path / "state.json"))
+    store.mark_success(
+        domain_key="example.com|direct|ua",
+        domain="example.com",
+        user_agent="ua",
+        proxy=None,
+        profile_dir=None,
+        final_url="https://example.com/ok",
+        cookie_names=["cf_clearance"],
+        artifact_dir=None,
+    )
+
+    # No partially-written ".tmp" scratch files survive a successful write.
+    leftovers = [p.name for p in tmp_path.iterdir() if p.suffix == ".tmp" or ".tmp" in p.name]
+    assert leftovers == []
+    # Files are present and contain valid JSON (not truncated).
+    assert json.loads(cookie_file.read_text()) == cookies
+    assert "example.com|direct|ua" in json.loads((tmp_path / "state.json").read_text())
 
 
 @pytest.mark.skipif(os.name != "posix", reason="POSIX file modes only")
