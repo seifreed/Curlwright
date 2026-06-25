@@ -88,6 +88,10 @@ async def selector_exists(page, selector: str) -> bool:
         return False
 
 
+def has_interstitial_assets(text: str) -> bool:
+    return "/cdn-cgi/styles/" in text and "cloudflare" in text
+
+
 class BypassClassifier:
     """Encapsulates heuristics for Cloudflare page and payload classification."""
 
@@ -176,7 +180,7 @@ class BypassClassifier:
             )
         if "cloudflare" in lower_title and "attention required" in lower_title:
             indicators.append("cloudflare-attention-title")
-        if "/cdn-cgi/styles/" in lower_html and "cloudflare" in lower_html:
+        if has_interstitial_assets(lower_html):
             indicators.append("cloudflare-interstitial-assets")
 
         return BypassAssessment(
@@ -203,7 +207,7 @@ class BypassClassifier:
             )
         if "attention required! | cloudflare" in lower_body:
             indicators.append("cloudflare-attention-title")
-        if "/cdn-cgi/styles/" in lower_body and "cloudflare" in lower_body:
+        if has_interstitial_assets(lower_body):
             indicators.append("cloudflare-interstitial-assets")
         if response.status in {200, 204} and not response.body.strip():
             indicators.append("empty-body")
