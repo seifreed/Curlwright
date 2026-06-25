@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+from curlwright import __version__
 from curlwright.errors import BypassFailure
 from curlwright.interfaces.contracts import (
     ERROR_KIND,
@@ -57,7 +58,7 @@ def build_sarif_report(
                 "tool": {
                     "driver": {
                         "name": "CurlWright",
-                        "version": "2.0.0",
+                        "version": __version__,
                         "informationUri": "https://github.com/seifreed/Curlwright",
                         "rules": _build_rules(),
                     }
