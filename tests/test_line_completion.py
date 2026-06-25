@@ -9,7 +9,7 @@ import pytest
 from playwright.async_api import async_playwright
 
 import curlwright.main as package_main
-from curlwright.contracts import EXIT_IO_ERROR, EXIT_PARSE_ERROR
+from curlwright.contracts import EXIT_IO_ERROR, EXIT_PARSE_ERROR, build_failure_payload
 from curlwright.infrastructure.browser_manager import BrowserManager
 from curlwright.infrastructure.protection_runtime import (
     PlaywrightChallengeActuator,
@@ -149,8 +149,8 @@ def test_package_main_resolve_missing_command_branch():
 
 
 def test_package_main_failure_payload_contract():
-    parse_payload = package_main._build_failure_payload(ValueError("bad curl"))
-    io_payload = package_main._build_failure_payload(FileNotFoundError("missing"))
+    parse_payload = build_failure_payload(ValueError("bad curl"))
+    io_payload = build_failure_payload(FileNotFoundError("missing"))
 
     assert parse_payload["schema_version"] == 1
     assert parse_payload["kind"] == "curlwright-error"
