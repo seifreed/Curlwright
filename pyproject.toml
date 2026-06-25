@@ -85,6 +85,11 @@ exclude = '''
 )/
 '''
 
+[tool.ruff]
+# The vulture whitelist references names by bare identifier (vulture's own
+# convention), which is not runnable Python; exclude it from linting.
+extend-exclude = ["vulture_whitelist.py"]
+
 [tool.mypy]
 python_version = "3.13"
 warn_return_any = true

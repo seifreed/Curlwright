@@ -187,7 +187,7 @@ def test_policy_covers_decision_matrix():
     clear = ProtectionSnapshot(state=ChallengeState.CLEAR, final_url="https://example.com")
     blocked = ProtectionSnapshot(state=ChallengeState.BLOCKED, final_url="https://example.com")
     turnstile = ProtectionSnapshot(state=ChallengeState.TURNSTILE, final_url="https://example.com")
-    challenge = ProtectionSnapshot(state=ChallengeState.CHALLENGE, final_url="https://example.com", signals=("x",))
+    challenge = ProtectionSnapshot(state=ChallengeState.CHALLENGE, final_url="https://example.com")
 
     assert policy.build_request_policy("https://example.com/path", TrustedSession(True)).navigation_targets[-1] == "https://example.com/"
     assert policy.decide_page_action(clear, managed_challenge=False).action is BypassAction.RETURN_CLEAR

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from urllib.parse import urlparse
 
@@ -33,20 +33,14 @@ class TrustedSession:
 class ProtectionSnapshot:
     state: ChallengeState
     final_url: str
-    title: str = ""
     status_code: int | None = None
-    signals: tuple[str, ...] = ()
-    body_excerpt: str = ""
 
     @classmethod
     def from_assessment(cls, assessment: BypassAssessment) -> "ProtectionSnapshot":
         return cls(
             state=ChallengeState(assessment.outcome),
             final_url=assessment.final_url,
-            title=assessment.title,
             status_code=assessment.status_code,
-            signals=tuple(assessment.indicators),
-            body_excerpt=assessment.body_excerpt,
         )
 
 
@@ -67,7 +61,6 @@ class ExecutionOutcome:
     kind: str
     status: int | None = None
     final_url: str | None = None
-    details: tuple[str, ...] = field(default_factory=tuple)
 
 
 class BypassPolicy:
@@ -123,13 +116,11 @@ class BypassPolicy:
                 kind="success",
                 status=snapshot.status_code,
                 final_url=snapshot.final_url,
-                details=snapshot.signals,
             )
         return ExecutionOutcome(
             kind="blocked_response",
             status=snapshot.status_code,
             final_url=snapshot.final_url,
-            details=snapshot.signals,
         )
 
     def _base_url(self, target_url: str) -> str:
