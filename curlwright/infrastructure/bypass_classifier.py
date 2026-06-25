@@ -5,9 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from curlwright.domain import BypassAssessment, FetchResponse
+from curlwright.infrastructure.logging import setup_logger
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
+
+logger = setup_logger(__name__)
 
 CHALLENGE_SELECTORS = [
     "div.cf-browser-verification",
@@ -183,12 +186,21 @@ class BypassClassifier:
         if has_interstitial_assets(lower_html):
             indicators.append("cloudflare-interstitial-assets")
 
+        unique_indicators = sorted(set(indicators))
+        outcome = self._classify_outcome(indicators)
+        logger.debug(
+            "Page assessment for %s: outcome=%s status=%s indicators=%s",
+            page.url,
+            outcome,
+            status_code,
+            unique_indicators,
+        )
         return BypassAssessment(
-            outcome=self._classify_outcome(indicators),
+            outcome=outcome,
             final_url=page.url,
             title=title,
             status_code=status_code,
-            indicators=sorted(set(indicators)),
+            indicators=unique_indicators,
             body_excerpt=compact_text(body_text or html),
         )
 
@@ -216,8 +228,15 @@ class BypassClassifier:
         if response.status in {200, 204} and not response.body.strip():
             indicators.append("empty-body")
 
+        outcome = self._classify_outcome(indicators)
+        logger.debug(
+            "Response assessment: outcome=%s status=%s indicators=%s",
+            outcome,
+            response.status,
+            indicators,
+        )
         return BypassAssessment(
-            outcome=self._classify_outcome(indicators),
+            outcome=outcome,
             final_url=response.url or "",
             title="",
             status_code=response.status,
