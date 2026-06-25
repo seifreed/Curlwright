@@ -13,7 +13,10 @@ def chrome_major_version(user_agent: str) -> str:
     if marker not in user_agent:
         return "124"
     version = user_agent.split(marker, 1)[1].split(".", 1)[0]
-    return version or "124"
+    # The value is interpolated into the stealth init script's JS string
+    # literals; only a numeric major version is ever legitimate, so reject
+    # anything else to avoid injecting attacker-controlled characters.
+    return version if version.isdigit() else "124"
 
 
 def build_browser_init_script(user_agent: str) -> str:
