@@ -377,6 +377,9 @@ async def test_protection_runtime_remaining_defensive_paths(monkeypatch):
     await actuator.wait_for_managed_challenge(ManagedPage(), timeout_ms=10)
 
     class Mouse:
+        async def move(self, *_args, **_kwargs):
+            return None
+
         async def click(self, *_args, **_kwargs):
             raise RuntimeError("click failure")
 
@@ -399,7 +402,7 @@ async def test_protection_runtime_remaining_defensive_paths(monkeypatch):
         def locator(self, _selector):
             return Locator()
 
-    assert await actuator._click_turnstile_iframe_center(ClickPage()) is False
+    assert await actuator._click_turnstile_checkbox(ClickPage()) is False
 
     class SelectorPage:
         async def wait_for_load_state(self, *_args, **_kwargs):

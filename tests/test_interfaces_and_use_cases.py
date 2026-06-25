@@ -45,6 +45,7 @@ from curlwright.infrastructure.protection_runtime import (
     ConsoleTelemetry,
     PlaywrightChallengeActuator,
     PlaywrightPageProbe,
+    _checkbox_point,
 )
 
 from tests.helpers import make_execution_meta
@@ -513,6 +514,10 @@ async def test_protection_runtime_components_cover_remaining_branches():
     class Mouse:
         def __init__(self):
             self.clicks = []
+            self.moves = []
+
+        async def move(self, x, y, steps=1):
+            self.moves.append((x, y))
 
         async def click(self, x, y):
             self.clicks.append((x, y))
@@ -528,10 +533,15 @@ async def test_protection_runtime_components_cover_remaining_branches():
                 raise RuntimeError("locator failure")
             return BoxLocator(self.boxes)
 
-    assert await actuator._click_turnstile_iframe_center(IframePage(locator_error=True)) is False
-    success_page = IframePage(boxes=[{"x": 1, "y": 2, "width": 10, "height": 20}])
-    assert await actuator._click_turnstile_iframe_center(success_page) is True
+    # Pure checkbox geometry: ~30px from the left, vertically centred, clamped.
+    assert _checkbox_point({"x": 0, "y": 0, "width": 300, "height": 65}) == (30, 32.5)
+    assert _checkbox_point({"x": 10, "y": 20, "width": 20, "height": 40}) == (20, 40)
+
+    assert await actuator._click_turnstile_checkbox(IframePage(locator_error=True)) is False
+    success_page = IframePage(boxes=[{"x": 1, "y": 2, "width": 300, "height": 60}])
+    assert await actuator._click_turnstile_checkbox(success_page) is True
     assert success_page.mouse.clicks
+    assert success_page.mouse.moves  # trusted move precedes the click
 
     class InputLocator:
         def __init__(self, *, count=1, value="token", error=False):

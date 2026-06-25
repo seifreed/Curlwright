@@ -25,6 +25,17 @@ def _html_shows_managed_challenge(html: str) -> bool:
     return any(marker in lowered for marker in MANAGED_CHALLENGE_HTML_MARKERS)
 
 
+def _checkbox_point(box: dict[str, float]) -> tuple[float, float]:
+    """Return the (x, y) of the Turnstile checkbox within a widget bounding box.
+
+    The checkbox renders ~30px from the left edge, vertically centred; the
+    offset is clamped so it stays inside narrow/compact widgets.
+    """
+    x = box["x"] + min(30.0, box["width"] / 2)
+    y = box["y"] + box["height"] / 2
+    return x, y
+
+
 class ConsoleTelemetry:
     def attach_console_capture(self, page) -> list[dict[str, str]]:
         console_events: list[dict[str, str]] = []
@@ -94,39 +105,39 @@ class PlaywrightChallengeActuator:
             logger.debug("synthetic event dispatch failed", exc_info=True)
 
     async def resolve_turnstile(self, page, *, timeout_ms: int) -> None:
-        selectors = [
-            "button#solve-turnstile",
-            "button[type='submit']",
-            "input[type='checkbox']",
-            "[role='checkbox']",
-            "label",
-        ]
-        interacted = False
-        for frame in page.frames:
-            for selector in selectors:
-                try:
-                    locator = frame.locator(selector)
-                    if await locator.count() > 0:
-                        await locator.first.click(timeout=1_000)
-                        interacted = True
-                        await asyncio.sleep(0.5)
-                        break
-                except Exception:
-                    logger.debug(
-                        "turnstile selector %s interaction failed", selector, exc_info=True
-                    )
-                    continue
-            if interacted:
-                break
-
+        # Primary path: click the checkbox at its real coordinates. The in-frame
+        # selector pass is only a fallback — it can otherwise click unrelated
+        # submit buttons / labels on the host page and trigger a navigation.
+        interacted = await self._click_turnstile_checkbox(page)
         if not interacted:
-            interacted = await self._click_turnstile_iframe_center(page)
+            interacted = await self._click_turnstile_selectors(page)
 
         await self._wait_for_turnstile_progress(
             page,
             timeout_ms=timeout_ms,
             expect_interaction=interacted,
         )
+
+    async def _click_turnstile_selectors(self, page) -> bool:
+        selectors = [
+            "button#solve-turnstile",
+            "input[type='checkbox']",
+            "[role='checkbox']",
+        ]
+        for frame in page.frames:
+            for selector in selectors:
+                try:
+                    locator = frame.locator(selector)
+                    if await locator.count() > 0:
+                        await locator.first.click(timeout=1_000)
+                        await asyncio.sleep(0.5)
+                        return True
+                except Exception:
+                    logger.debug(
+                        "turnstile selector %s interaction failed", selector, exc_info=True
+                    )
+                    continue
+        return False
 
     async def advance_challenge(self, page, *, attempt_index: int, timeout_ms: int) -> None:
         await asyncio.sleep(min(0.75 * attempt_index, 2.0))
@@ -162,33 +173,50 @@ class PlaywrightChallengeActuator:
         except Exception:
             logger.debug("revisit navigation to %s failed", target_url, exc_info=True)
 
-    async def _click_turnstile_iframe_center(self, page) -> bool:
-        iframe_selectors = [
+    async def _click_turnstile_checkbox(self, page) -> bool:
+        # The Turnstile checkbox sits on the LEFT of the widget (~30px in,
+        # vertically centred), not the centre, so we aim there and dispatch a
+        # trusted, human-like mouse move + click (CDP Input → isTrusted=True,
+        # which also reaches the cross-origin challenge iframe by coordinate).
+        anchor_selectors = [
             "iframe[src*='challenges.cloudflare.com']",
             "iframe[src*='turnstile']",
+            "div.cf-turnstile",
         ]
-        for selector in iframe_selectors:
-            try:
-                locator = page.locator(selector)
-                count = await locator.count()
-            except Exception:
-                logger.debug("iframe selector %s lookup failed", selector, exc_info=True)
-                continue
-            for index in range(count):
+        deadline = asyncio.get_event_loop().time() + 5.0
+        while asyncio.get_event_loop().time() < deadline:
+            for selector in anchor_selectors:
+                box = await self._first_visible_box(page, selector)
+                if box is None:
+                    continue
+                target_x, target_y = _checkbox_point(box)
                 try:
-                    box = await locator.nth(index).bounding_box()
-                    if not box:
-                        continue
-                    await page.mouse.click(
-                        box["x"] + box["width"] / 2,
-                        box["y"] + box["height"] / 2,
-                    )
+                    await page.mouse.move(target_x, target_y, steps=12)
+                    await page.mouse.click(target_x, target_y)
                     await asyncio.sleep(0.5)
                     return True
                 except Exception:
-                    logger.debug("iframe center click failed", exc_info=True)
+                    logger.debug("turnstile checkbox click failed", exc_info=True)
                     continue
+            await asyncio.sleep(0.4)
         return False
+
+    async def _first_visible_box(self, page, selector: str):
+        try:
+            locator = page.locator(selector)
+            count = await locator.count()
+        except Exception:
+            logger.debug("turnstile anchor %s lookup failed", selector, exc_info=True)
+            return None
+        for index in range(count):
+            try:
+                box = await locator.nth(index).bounding_box()
+            except Exception:
+                logger.debug("turnstile anchor %s box failed", selector, exc_info=True)
+                continue
+            if box and box["width"] > 0 and box["height"] > 0:
+                return box
+        return None
 
     async def _wait_for_turnstile_progress(
         self,
@@ -197,7 +225,10 @@ class PlaywrightChallengeActuator:
         timeout_ms: int,
         expect_interaction: bool,
     ) -> None:
-        deadline = asyncio.get_event_loop().time() + min(timeout_ms / 1000, 8.0)
+        # Poll for the issued token until the deadline. The token populates
+        # ~1-3s after a valid checkbox click, so we must NOT bail after a single
+        # networkidle wait (the old behaviour returned almost immediately).
+        deadline = asyncio.get_event_loop().time() + min(timeout_ms / 1000, 15.0)
         while asyncio.get_event_loop().time() < deadline:
             if await self._turnstile_response_ready(page):
                 return
@@ -213,9 +244,9 @@ class PlaywrightChallengeActuator:
                     return
             try:
                 await page.wait_for_load_state("networkidle", timeout=750)
-                return
             except Exception:
-                await asyncio.sleep(0.35)
+                logger.debug("networkidle wait failed during turnstile progress", exc_info=True)
+            await asyncio.sleep(0.4)
 
     async def _turnstile_response_ready(self, page) -> bool:
         try:

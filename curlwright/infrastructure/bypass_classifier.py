@@ -95,6 +95,18 @@ def has_interstitial_assets(text: str) -> bool:
     return "/cdn-cgi/styles/" in text and "cloudflare" in text
 
 
+async def turnstile_token_present(page) -> bool:
+    """True when the hidden cf-turnstile-response input holds a token (solved)."""
+    try:
+        locator = page.locator("input[name='cf-turnstile-response']")
+        if await locator.count() == 0:
+            return False
+        value = await locator.first.input_value(timeout=500)
+        return bool(value.strip())
+    except Exception:
+        return False
+
+
 class BypassClassifier:
     """Encapsulates heuristics for Cloudflare page and payload classification."""
 
@@ -146,11 +158,23 @@ class BypassClassifier:
     )
 
     async def assess_page(self, page, response) -> BypassAssessment:
+        status_code = getattr(response, "status", None) if response is not None else None
+
+        # A populated cf-turnstile-response means the challenge is already
+        # solved (token issued); treat that as clear even if the widget DOM is
+        # still present, so the flow proceeds instead of re-resolving forever.
+        if await turnstile_token_present(page):
+            return BypassAssessment(
+                outcome="clear",
+                final_url=page.url,
+                status_code=status_code,
+                indicators=["turnstile-token-present"],
+            )
+
         title = ""
         html = ""
         body_text = ""
         indicators: list[str] = []
-        status_code = getattr(response, "status", None) if response is not None else None
 
         try:
             title = await page.title()
