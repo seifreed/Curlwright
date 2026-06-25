@@ -64,6 +64,13 @@ def start_fixture_server():
     return server, thread
 
 
+def assert_payload_contract(payload: dict, *, kind: str, ok: bool, exit_code: int) -> None:
+    assert payload["schema_version"] == 1
+    assert payload["kind"] == kind
+    assert payload["ok"] is ok
+    assert payload["exit_code"] == exit_code
+
+
 def make_execution_meta(
     *,
     cookie_file: str | None = "cookies.pkl",

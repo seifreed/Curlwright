@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from tests.helpers import start_fixture_server
+from tests.helpers import assert_payload_contract, start_fixture_server
 
 
 def test_pipeline_json_contract_and_artifacts_with_real_cli(tmp_path):
@@ -47,10 +47,7 @@ def test_pipeline_json_contract_and_artifacts_with_real_cli(tmp_path):
 
     assert result.returncode == 0
     payload = json.loads(result.stdout)
-    assert payload["schema_version"] == 1
-    assert payload["kind"] == "curlwright-result"
-    assert payload["ok"] is True
-    assert payload["exit_code"] == 0
+    assert_payload_contract(payload, kind="curlwright-result", ok=True, exit_code=0)
     assert payload["response"]["status"] == 200
     assert payload["meta"]["runtime"]["artifact_dir"] == str(artifact_dir)
     assert payload["meta"]["runtime"]["cookie_file"] == str(cookie_file)
@@ -83,10 +80,7 @@ def test_pipeline_failure_json_and_sarif_with_real_cli(tmp_path):
 
     assert result.returncode == 11
     payload = json.loads(result.stdout)
-    assert payload["schema_version"] == 1
-    assert payload["kind"] == "curlwright-error"
-    assert payload["ok"] is False
-    assert payload["exit_code"] == 11
+    assert_payload_contract(payload, kind="curlwright-error", ok=False, exit_code=11)
     assert payload["error_type"] == "FileNotFoundError"
     report = json.loads(sarif_file.read_text())
     assert report["runs"][0]["results"][0]["ruleId"] == "CW002"

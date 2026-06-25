@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 import curlwright.main as package_main
-from tests.helpers import start_fixture_server
+from tests.helpers import assert_payload_contract, start_fixture_server
 
 
 @contextmanager
@@ -143,10 +143,7 @@ def test_cli_json_output_contains_meta():
 
     assert result.returncode == 0
     payload = json.loads(result.stdout)
-    assert payload["schema_version"] == 1
-    assert payload["kind"] == "curlwright-result"
-    assert payload["ok"] is True
-    assert payload["exit_code"] == 0
+    assert_payload_contract(payload, kind="curlwright-result", ok=True, exit_code=0)
     assert payload["response"]["status"] == 200
     assert os.path.normpath(payload["meta"]["runtime"]["artifact_dir"]) == os.path.normpath(".artifacts/test-json")
     assert os.path.normpath(payload["meta"]["runtime"]["cookie_file"]) == os.path.normpath(".artifacts/test-json/cookies.pkl")
@@ -254,10 +251,7 @@ def test_package_main_json_failure_output_for_missing_file():
 
     assert result.returncode == 11
     payload = json.loads(result.stdout)
-    assert payload["schema_version"] == 1
-    assert payload["kind"] == "curlwright-error"
-    assert payload["ok"] is False
-    assert payload["exit_code"] == 11
+    assert_payload_contract(payload, kind="curlwright-error", ok=False, exit_code=11)
     assert payload["error_type"] == "FileNotFoundError"
 
 
@@ -280,10 +274,7 @@ def test_package_main_json_failure_output_for_parse_error():
 
     assert result.returncode == 12
     payload = json.loads(result.stdout)
-    assert payload["schema_version"] == 1
-    assert payload["kind"] == "curlwright-error"
-    assert payload["ok"] is False
-    assert payload["exit_code"] == 12
+    assert_payload_contract(payload, kind="curlwright-error", ok=False, exit_code=12)
     assert payload["error_type"] == "ValueError"
 
 
