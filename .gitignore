@@ -79,7 +79,3 @@ test-results/
 # Claude AI
 .claude/
 claude/
-
-# Build scripts (local use only)
-build.py
-twist.py
