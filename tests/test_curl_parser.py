@@ -101,22 +101,6 @@ def test_output_related_flags_are_ignored_for_request_shape():
     assert request.data is None
 
 
-def test_parse_from_file_supports_multiline_commands(tmp_path):
-    request_file = tmp_path / "request.txt"
-    request_file.write_text(
-        "curl -X POST \\\n"
-        "  -H 'Content-Type: application/json' \\\n"
-        "  -d '{\"ok\":true}' \\\n"
-        "  https://example.com/api\n"
-    )
-
-    request = CurlParser().parse_from_file(str(request_file))
-
-    assert request.method == "POST"
-    assert request.headers["Content-Type"] == "application/json"
-    assert request.data == '{"ok":true}'
-
-
 def test_parse_rejects_invalid_shell_syntax():
     with pytest.raises(ValueError, match="Invalid curl command format"):
         CurlParser().parse("curl 'https://example.com")

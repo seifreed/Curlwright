@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from curlwright.domain import (
     AttemptRecord,
-    BypassAssessment,
     ExecutionResult,
     FetchResponse,
 )
@@ -11,9 +10,6 @@ from tests.helpers import make_execution_meta
 
 
 def test_domain_core_payload_helpers_cover_remaining_paths():
-    assessment = BypassAssessment(outcome="clear", final_url="https://example.com")
-    assert assessment.is_clear is True
-
     attempt = AttemptRecord(
         attempt=1,
         user_agent="ua",

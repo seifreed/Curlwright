@@ -38,10 +38,6 @@ class ProtectionSnapshot:
     signals: tuple[str, ...] = ()
     body_excerpt: str = ""
 
-    @property
-    def is_clear(self) -> bool:
-        return self.state is ChallengeState.CLEAR
-
     @classmethod
     def from_assessment(cls, assessment: BypassAssessment) -> "ProtectionSnapshot":
         return cls(

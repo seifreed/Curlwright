@@ -53,24 +53,7 @@ def test_domain_bypass_state_without_verification_is_not_trusted():
     assert record.is_trusted(60) is False
 
 
-def test_curl_request_to_dict_and_parser_helpers_cover_remaining_branches():
-    request = CurlRequest(
-        url="https://example.com",
-        method="POST",
-        headers={"Accept": "application/json"},
-        data="a=1",
-        cookies={"session": "abc"},
-        auth=("alice", "secret"),
-        follow_redirects=True,
-        verify_ssl=False,
-        timeout=5,
-        proxy="http://proxy:8080",
-    )
-
-    payload = request.to_dict()
-    assert payload["url"] == "https://example.com"
-    assert payload["proxy"] == "http://proxy:8080"
-
+def test_parser_helpers_cover_remaining_branches():
     parser = CurlParser()
     parsed = parser.parse("curl -G --data 'lonely' https://example.com")
     assert parsed.url == "https://example.com?=lonely"

@@ -1,6 +1,5 @@
 """Curl parser infrastructure."""
 
-from pathlib import Path
 import shlex
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -154,6 +153,3 @@ class CurlParser:
         current_pairs = parse_qsl(parsed.query, keep_blank_values=True)
         updated_query = urlencode(current_pairs + query_pairs, doseq=True)
         return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, updated_query, parsed.fragment))
-
-    def parse_from_file(self, file_path: str) -> CurlRequest:
-        return self.parse(Path(file_path).read_text())

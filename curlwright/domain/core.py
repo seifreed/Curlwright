@@ -32,9 +32,6 @@ class CurlRequest:
     timeout: int | None = None
     proxy: str | None = None
 
-    def to_dict(self) -> dict[str, object]:
-        return asdict(self)
-
 
 @dataclass
 class DomainBypassState:
@@ -105,10 +102,6 @@ class BypassAssessment:
     status_code: int | None = None
     indicators: list[str] = field(default_factory=list)
     body_excerpt: str = ""
-
-    @property
-    def is_clear(self) -> bool:
-        return self.outcome == "clear"
 
 
 class BypassFailure(RuntimeError):
