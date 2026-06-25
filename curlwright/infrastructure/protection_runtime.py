@@ -12,6 +12,14 @@ from curlwright.infrastructure.bypass_classifier import (
     BypassClassifier,
 )
 
+MANAGED_CHALLENGE_URL_MARKER = "__cf_chl_"
+MANAGED_CHALLENGE_HTML_MARKERS = ("window._cf_chl_opt", "/cdn-cgi/challenge-platform/")
+
+
+def _html_shows_managed_challenge(html: str) -> bool:
+    lowered = html.lower()
+    return any(marker in lowered for marker in MANAGED_CHALLENGE_HTML_MARKERS)
+
 
 class ConsoleTelemetry:
     def attach_console_capture(self, page) -> list[dict[str, str]]:
@@ -50,13 +58,13 @@ class PlaywrightPageProbe:
         return self.classifier.assess_response_payload(payload)
 
     async def is_managed_challenge(self, page) -> bool:
-        if "__cf_chl_" in page.url:
+        if MANAGED_CHALLENGE_URL_MARKER in page.url:
             return True
         try:
-            html = (await page.content()).lower()
+            html = await page.content()
         except Exception:
             return False
-        return "window._cf_chl_opt" in html or "/cdn-cgi/challenge-platform/" in html
+        return _html_shows_managed_challenge(html)
 
 
 class PlaywrightChallengeActuator:
@@ -126,12 +134,12 @@ class PlaywrightChallengeActuator:
     async def wait_for_managed_challenge(self, page, *, timeout_ms: int) -> None:
         deadline = asyncio.get_event_loop().time() + min(timeout_ms / 1000, 10.0)
         while asyncio.get_event_loop().time() < deadline:
-            if "__cf_chl_" not in page.url:
+            if MANAGED_CHALLENGE_URL_MARKER not in page.url:
                 try:
-                    html = (await page.content()).lower()
+                    html = await page.content()
                 except Exception:
                     html = ""
-                if "window._cf_chl_opt" not in html and "/cdn-cgi/challenge-platform/" not in html:
+                if not _html_shows_managed_challenge(html):
                     return
             try:
                 await page.wait_for_load_state("networkidle", timeout=1_000)
