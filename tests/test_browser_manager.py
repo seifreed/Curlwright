@@ -5,18 +5,21 @@ import pytest
 from curlwright.infrastructure.browser_manager import BrowserManager
 
 
-def test_browser_manager_build_launch_options_uses_conservative_no_gui_flags():
+def test_browser_manager_build_launch_options_drives_real_chrome():
     manager = BrowserManager(headless=True, no_gui=True, proxy="http://127.0.0.1:8080")
 
     launch_options = manager._build_launch_options()
 
+    assert launch_options["channel"] == "chrome"
     assert launch_options["headless"] is True
     assert launch_options["proxy"] == {"server": "http://127.0.0.1:8080"}
     args = launch_options["args"]
     assert isinstance(args, list)
-    assert "--disable-blink-features=AutomationControlled" in args
+    assert "--disable-dev-shm-usage" in args
+    # Automation-flagging switches are no longer sent (Patchright neutralises
+    # AutomationControlled at the protocol level).
+    assert "--disable-blink-features=AutomationControlled" not in args
     assert "--single-process" not in args
-    assert "--disable-images" not in args
     assert "--disable-web-security" not in args
 
 
@@ -30,6 +33,18 @@ def test_browser_manager_build_context_options_sets_realistic_defaults():
     assert context_options["color_scheme"] == "light"
     assert context_options["ignore_https_errors"] is True
     assert context_options["screen"] == {"width": 1920, "height": 1080}
+    # No forced user agent or Windows client-hint headers: real Chrome supplies
+    # its own consistent values.
+    assert "user_agent" not in context_options
+    assert "extra_http_headers" not in context_options
+
+
+def test_browser_manager_sets_explicit_user_agent_only_when_pinned():
+    manager = BrowserManager(headless=True, user_agent="Custom/2.0")
+    assert manager._build_context_options()["user_agent"] == "Custom/2.0"
+
+    default_manager = BrowserManager(headless=True)
+    assert default_manager.user_agent is None
 
 
 def test_browser_manager_uses_default_persistent_profile_dir():
@@ -51,40 +66,21 @@ async def test_browser_manager_initializes_persistent_context_with_profile_dir(t
         await manager.close()
 
 
-def test_browser_manager_build_init_script_contains_native_stealth_overrides():
-    manager = BrowserManager(headless=True, no_gui=True)
-    script = manager._build_init_script()
-
-    assert "Object.defineProperty(navigator, 'userAgentData'" in script
-    assert "Object.defineProperty(navigator, 'vendor'" in script
-    assert "WebGLRenderingContext.prototype.getParameter" in script
-
-
 @pytest.mark.asyncio
-async def test_browser_manager_initializes_creates_page_and_closes():
+async def test_browser_manager_launches_real_chrome_and_closes():
     manager = BrowserManager(headless=True, no_gui=True, verify_ssl=False, profile_dir=None)
 
     try:
         await manager.initialize()
-        assert manager.browser is not None
         assert manager.context is not None
 
         page = await manager.create_page()
-        hidden = await page.evaluate("document.hidden")
-        visibility = await page.evaluate("document.visibilityState")
         user_agent = await page.evaluate("navigator.userAgent")
         vendor = await page.evaluate("navigator.vendor")
-        platform = await page.evaluate("navigator.platform")
-        hardware = await page.evaluate("navigator.hardwareConcurrency")
-        ua_data = await page.evaluate("navigator.userAgentData && navigator.userAgentData.platform")
 
-        assert hidden is False
-        assert visibility == "visible"
-        assert user_agent == manager.user_agent
+        # Genuine Chrome fingerprint (not a spoofed init script).
+        assert "Chrome" in user_agent
         assert vendor == "Google Inc."
-        assert platform == "Win32"
-        assert hardware == 8
-        assert ua_data == "Windows"
     finally:
         await manager.close()
 

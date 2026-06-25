@@ -1,20 +1,19 @@
-"""Browser lifecycle adapter for Playwright with delegated stealth and challenge helpers."""
+"""Browser lifecycle adapter driving real Chrome through Patchright for stealth."""
 
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from curlwright.infrastructure.browser_stealth import build_browser_init_script
 from curlwright.infrastructure.logging import setup_logger
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
 
 if TYPE_CHECKING:
-    from playwright.async_api import Browser, BrowserContext, Page, Playwright
+    from patchright.async_api import Browser, BrowserContext, Page, Playwright
 
 type HttpCredentials = dict[str, str]
 type ProxyConfig = dict[str, str]
-type LaunchOptions = dict[str, bool | list[str] | ProxyConfig]
+type LaunchOptions = dict[str, str | bool | list[str] | ProxyConfig]
 type ContextOptions = dict[str, object]
 
 logger = setup_logger(__name__)
@@ -39,7 +38,9 @@ class BrowserManager:
         self.proxy = proxy
         self.verify_ssl = verify_ssl
         self.http_credentials = http_credentials
-        self.user_agent = user_agent or self._get_default_user_agent()
+        # None means "let real Chrome send its own native user agent" so the UA
+        # stays consistent with the browser's real client hints.
+        self.user_agent = user_agent
         self.profile_dir = (
             Path(profile_dir) if profile_dir else Path.home() / ".curlwright" / "browser-profile"
         )
@@ -51,13 +52,10 @@ class BrowserManager:
         self._persistent_context = True
         self._playwright_factory = playwright_factory
 
-    def _get_default_user_agent(self) -> str:
-        return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
-
     async def initialize(self) -> None:
         try:
             if self._playwright_factory is None:
-                from playwright.async_api import async_playwright
+                from patchright.async_api import async_playwright
 
                 factory = async_playwright
             else:
@@ -72,57 +70,40 @@ class BrowserManager:
                 **context_options,
             )
             self.browser = self.context.browser
-            await self.context.add_init_script(self._build_init_script())
             logger.info("Browser initialized successfully")
         except Exception as error:
             logger.error("Failed to initialize browser: %s", error)
             raise
 
-    def _build_init_script(self) -> str:
-        return build_browser_init_script(self.user_agent)
-
     def _build_launch_options(self) -> LaunchOptions:
+        # Keep the argument set minimal and benign: real Chrome with few flags
+        # looks far more genuine than one carrying automation-flagging switches
+        # (Patchright already neutralises AutomationControlled at the protocol
+        # level, so we no longer pass it ourselves).
         browser_args = [
-            "--disable-blink-features=AutomationControlled",
             "--disable-dev-shm-usage",
             "--no-sandbox",
             "--disable-setuid-sandbox",
-            "--no-first-run",
-            "--password-store=basic",
-            "--use-mock-keychain",
-            "--disable-infobars",
-            "--disable-features=IsolateOrigins,site-per-process",
-            "--disable-site-isolation-trials",
-            "--disable-features=BlockInsecurePrivateNetworkRequests",
             "--window-size=1920,1080",
         ]
-
-        if self.no_gui:
-            browser_args.extend(
-                [
-                    "--disable-gpu",
-                    "--disable-software-rasterizer",
-                    "--no-zygote",
-                    "--mute-audio",
-                    "--disable-background-networking",
-                    "--disable-background-timer-throttling",
-                    "--disable-breakpad",
-                    "--metrics-recording-only",
-                    "--force-color-profile=srgb",
-                    "--hide-scrollbars",
-                ]
-            )
-        else:
-            browser_args.append("--start-maximized")
-
-        launch_options: LaunchOptions = {"headless": self.headless, "args": browser_args}
+        # channel="chrome" drives the real Google Chrome binary, and modern
+        # Playwright/Patchright run it in Chrome's new headless mode (far closer
+        # to headful than legacy headless) when headless is requested.
+        launch_options: LaunchOptions = {
+            "channel": "chrome",
+            "headless": self.headless,
+            "args": browser_args,
+        }
         if self.proxy:
             launch_options["proxy"] = {"server": self.proxy}
         return launch_options
 
     def _build_context_options(self) -> ContextOptions:
-        return {
-            "user_agent": self.user_agent,
+        # Let real Chrome supply its own user agent, client hints and Sec-*/
+        # Accept headers so everything is internally consistent; overriding them
+        # (especially with a Windows fingerprint on a non-Windows host) is itself
+        # a detection signal. Only set a UA when the caller explicitly asked.
+        options: ContextOptions = {
             "viewport": {"width": 1920, "height": 1080},
             "screen": {"width": 1920, "height": 1080},
             "locale": "en-US",
@@ -132,20 +113,10 @@ class BrowserManager:
             "ignore_https_errors": not self.verify_ssl,
             "java_script_enabled": True,
             "http_credentials": self.http_credentials,
-            "extra_http_headers": {
-                "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br, zstd",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                "Sec-Ch-Ua": '"Chromium";v="134", "Google Chrome";v="134", "Not-A.Brand";v="8"',
-                "Sec-Ch-Ua-Mobile": "?0",
-                "Sec-Ch-Ua-Platform": '"Windows"',
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
-                "Upgrade-Insecure-Requests": "1",
-            },
         }
+        if self.user_agent:
+            options["user_agent"] = self.user_agent
+        return options
 
     async def create_page(self):
         if not self.context:

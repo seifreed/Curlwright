@@ -13,7 +13,7 @@
   <a href="https://pypi.org/project/curlwright/"><img src="https://img.shields.io/pypi/pyversions/curlwright?style=flat-square&logo=python&logoColor=white" alt="Python Versions"></a>
   <a href="https://github.com/seifreed/Curlwright/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License"></a>
   <a href="https://github.com/seifreed/Curlwright/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/seifreed/Curlwright/ci.yml?style=flat-square&logo=github&label=CI" alt="CI Status"></a>
-  <img src="https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square" alt="Coverage">
+  <img src="https://img.shields.io/badge/coverage-98%25-brightgreen?style=flat-square" alt="Coverage">
 </p>
 
 <p align="center">
@@ -26,17 +26,19 @@
 
 ## Overview
 
-**CurlWright** is a Python tool that takes a curl command, opens a real Chromium browser through Playwright, resolves Cloudflare and similar browser-side friction, and returns the final HTTP response in a form that still feels close to curl-driven workflows.
+**CurlWright** is a Python tool that takes a curl command, opens a **real Google Chrome** browser through [Patchright](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright) (a stealth-patched Playwright), works through Cloudflare and similar browser-side friction, and returns the final HTTP response in a form that still feels close to curl-driven workflows.
 
 It is useful when a plain HTTP client is not enough because the target requires browser execution, JavaScript, cookies, challenge handling, or a persisted trusted session.
+
+> **On the Cloudflare bypass:** CurlWright drives real Chrome (`channel="chrome"`) in new-headless mode with Patchright's protocol-level stealth, so it transparently handles passive Cloudflare (CDN) and clears many managed / "I'm Under Attack" / non-interactive challenges. It is **not** a guaranteed solver for **interactive** Turnstile or hardened anti-bot setups — those generally require a paid CAPTCHA-solving service, which CurlWright does not bundle. It detects the challenge type and progresses what it can; when a page cannot be cleared it fails loudly with diagnostics (exit code 10).
 
 ### Key Features
 
 | Feature | Description |
 |---------|-------------|
-| **Browser-backed curl execution** | Parse a curl command and execute it through Playwright |
-| **Cloudflare challenge handling** | Detect and progress browser-side verification flows |
-| **Turnstile support** | Includes dedicated handling for Turnstile-style flows |
+| **Browser-backed curl execution** | Parse a curl command and execute it through real Chrome (Patchright) |
+| **Cloudflare challenge handling** | Detect and progress browser-side verification; clears passive CF and many managed/non-interactive challenges (not a guaranteed interactive-Turnstile solver) |
+| **Turnstile detection** | Detects Turnstile flows and attempts non-interactive resolution |
 | **Trusted session reuse** | Persist per-domain trust state and cookies between runs |
 | **JSON and SARIF outputs** | Machine-readable output for automation and CI/security tooling |
 | **Headless and server mode** | Works in local desktop mode or with `--no-gui` in CI/VPS environments |
@@ -63,8 +65,13 @@ Input Forms   Direct command (-c) or file (-f)
 
 ```bash
 pip install curlwright
-python -m playwright install chromium
+# CurlWright drives your system Google Chrome (channel="chrome").
+# If you do not have Chrome installed, fetch a Chrome build for Patchright:
+patchright install chrome
 ```
+
+> Requires **Google Chrome** on the host (the default `channel="chrome"`). On a server/VPS,
+> install Chrome (or run `patchright install chrome`); headless runs use Chrome's new headless mode.
 
 ### From Source
 
@@ -74,7 +81,7 @@ cd Curlwright
 python3 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -e ".[dev]"
-python -m playwright install chromium
+patchright install chrome   # only if system Chrome is absent
 ```
 
 ---

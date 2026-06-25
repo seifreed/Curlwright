@@ -15,7 +15,6 @@ from curlwright.domain import (
 )
 from curlwright.domain.policy import BypassAction, BypassPolicy
 from curlwright.infrastructure.browser_manager import BrowserManager
-from curlwright.infrastructure.browser_stealth import chrome_major_version
 from curlwright.infrastructure.bypass_classifier import compact_text
 from curlwright.infrastructure.parsers import CurlParser
 from curlwright.infrastructure.persistence import CookieManager
@@ -51,8 +50,6 @@ def test_parser_cookie_file_reference_and_empty_cookie_store(tmp_path):
 
 
 def test_browser_manager_unit_paths_cover_remaining_branches(tmp_path):
-    assert chrome_major_version("Mozilla/5.0 Chrome/131.2.3.4") == "131"
-
     class FailingStarter:
         async def start(self):
             raise RuntimeError("start failure")

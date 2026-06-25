@@ -23,6 +23,12 @@ class _ExecutorFixtureHandler(BaseFixtureHandler):
         route = self.path.split("?", 1)[0]
         accept = self.headers.get("Accept", "")
 
+        if route == "/":
+            # The warm-up navigates to the site root, so serve a real page there
+            # (a real Chrome rejects a bare bodyless 404 with ERR_HTTP_RESPONSE_CODE_FAILURE).
+            self._send_html("<html><body>fixture root</body></html>")
+            return
+
         if route == "/json":
             self._send_json({"ok": True, "method": "GET"})
             return
@@ -63,22 +69,21 @@ def _start_executor_server():
     return server, thread
 
 
-def test_domain_session_key_and_retry_user_agent_rotation():
+def test_domain_session_key_uses_native_ua_when_unpinned():
     executor = RequestExecutor(profile_dir="/tmp/curlwright-profile-a")
     request = CurlRequest(url="https://example.com/data", proxy="http://proxy:8080")
 
-    first = executor._get_retry_user_agent(0)
-    second = executor._get_retry_user_agent(1)
-    executor._effective_user_agent = first
-
-    assert first != second
+    # With no pinned UA, every attempt uses Chrome's native UA (None) and the
+    # session key records a stable "chrome-native" marker.
+    assert executor._get_retry_user_agent(0) is None
+    assert executor._get_retry_user_agent(1) is None
     assert (
         executor._get_domain_session_key(request)
-        == f"example.com|http://proxy:8080|{first}|{os.path.normpath('/tmp/curlwright-profile-a')}"
+        == f"example.com|http://proxy:8080|chrome-native|{os.path.normpath('/tmp/curlwright-profile-a')}"
     )
 
 
-def test_pinned_user_agent_disables_rotation():
+def test_pinned_user_agent_is_used_for_every_attempt():
     executor = RequestExecutor(user_agent="Custom/1.0")
 
     assert executor._get_retry_user_agent(0) == "Custom/1.0"
@@ -324,7 +329,7 @@ async def test_human_warmup_visits_base_url_before_bypass(tmp_path):
         await executor.http_runtime.warm_up_page(
             page,
             request,
-            2_000,
+            15_000,
             cookie_manager=executor.cookie_manager,
             trusted_session=executor._has_trusted_session(request),
         )

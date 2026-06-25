@@ -44,7 +44,7 @@ ensure_supported_python()
 logger = setup_logger(__name__)
 
 type HttpCredentials = dict[str, str]
-type BrowserSignature = tuple[str | None, bool, tuple[str | None, str | None], str]
+type BrowserSignature = tuple[str | None, bool, tuple[str | None, str | None], str | None]
 
 
 class RequestExecutor:
@@ -88,12 +88,9 @@ class RequestExecutor:
         self.persist_cookies = persist_cookies
         self.cookie_manager = cookie_store if persist_cookies else None
         self._browser_signature: BrowserSignature | None = None
-        self._retry_user_agents = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-        ]
-        self._effective_user_agent = user_agent or self._retry_user_agents[0]
+        # When no user agent is pinned we let real Chrome use its own native UA
+        # (None), which keeps the UA consistent with the browser's client hints.
+        self._effective_user_agent = user_agent
         self.browser_manager_factory = browser_manager_factory
         self.cookie_file = str(self.cookie_manager.cookie_file) if self.cookie_manager else None
         self.state_file = str(self.session_store.state_file)
@@ -121,7 +118,7 @@ class RequestExecutor:
         )
         self.build_execution_report = BuildExecutionReport()
 
-    async def _ensure_initialized(self, request: CurlRequest, *, user_agent: str) -> None:
+    async def _ensure_initialized(self, request: CurlRequest, *, user_agent: str | None) -> None:
         browser_signature = self._get_browser_signature(request, user_agent)
         if self.initialized and browser_signature == self._browser_signature:
             return
@@ -165,7 +162,9 @@ class RequestExecutor:
 
         for attempt in range(max_retries):
             effective_user_agent = self._get_retry_user_agent(attempt)
-            attempt_record = AttemptRecord(attempt=attempt + 1, user_agent=effective_user_agent)
+            attempt_record = AttemptRecord(
+                attempt=attempt + 1, user_agent=effective_user_agent or "chrome-native"
+            )
             try:
                 await self._ensure_initialized(request, user_agent=effective_user_agent)
                 result = await self._execute_request(request)
@@ -280,7 +279,7 @@ class RequestExecutor:
             self.session_store.mark_success(
                 domain_key=prepared.domain_key,
                 domain=prepared.domain,
-                user_agent=self._effective_user_agent,
+                user_agent=self._effective_user_agent or "chrome-native",
                 proxy=request.proxy,
                 profile_dir=self.profile_dir,
                 final_url=response_data.url or request.url,
@@ -294,7 +293,7 @@ class RequestExecutor:
             self.session_store.mark_failure(
                 domain_key=domain_key,
                 domain=domain,
-                user_agent=self._effective_user_agent,
+                user_agent=self._effective_user_agent or "chrome-native",
                 proxy=request.proxy,
                 profile_dir=self.profile_dir,
                 final_url=error.assessment.final_url,
@@ -322,7 +321,9 @@ class RequestExecutor:
         username, password = request.auth
         return {"username": username, "password": password}
 
-    def _get_browser_signature(self, request: CurlRequest, user_agent: str) -> BrowserSignature:
+    def _get_browser_signature(
+        self, request: CurlRequest, user_agent: str | None
+    ) -> BrowserSignature:
         credentials = request.auth or (None, None)
         return (request.proxy, request.verify_ssl, credentials, user_agent)
 
@@ -331,7 +332,7 @@ class RequestExecutor:
             [
                 self._extract_domain(request.url),
                 request.proxy or "direct",
-                self._effective_user_agent,
+                self._effective_user_agent or "chrome-native",
                 self.profile_dir,
             ]
         )
@@ -343,10 +344,10 @@ class RequestExecutor:
             return False
         return self.cookie_manager.has_cookies_for_domain(self._extract_domain(request.url))
 
-    def _get_retry_user_agent(self, attempt: int) -> str:
-        if self.user_agent:
-            return self.user_agent
-        return self._retry_user_agents[attempt % len(self._retry_user_agents)]
+    def _get_retry_user_agent(self, attempt: int) -> str | None:
+        # A pinned --user-agent wins; otherwise None lets Chrome use its native
+        # UA. There is no fake-UA rotation: real Chrome's UA is the stealthy one.
+        return self.user_agent
 
     async def _reset_runtime_state(self) -> None:
         if self.browser_manager:

@@ -63,7 +63,7 @@ class DomainBypassState:
 @dataclass
 class BrowserSessionConfig:
     headless: bool
-    user_agent: str
+    user_agent: str | None
     no_gui: bool
     proxy: str | None
     verify_ssl: bool
