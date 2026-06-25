@@ -30,7 +30,11 @@
 
 It is useful when a plain HTTP client is not enough because the target requires browser execution, JavaScript, cookies, challenge handling, or a persisted trusted session.
 
-> **On the Cloudflare bypass:** CurlWright drives real Chrome (`channel="chrome"`) in new-headless mode with Patchright's protocol-level stealth, so it transparently handles passive Cloudflare (CDN) and clears many managed / "I'm Under Attack" / non-interactive challenges. It is **not** a guaranteed solver for **interactive** Turnstile or hardened anti-bot setups — those generally require a paid CAPTCHA-solving service, which CurlWright does not bundle. It detects the challenge type and progresses what it can; when a page cannot be cleared it fails loudly with diagnostics (exit code 10).
+> **On the Cloudflare bypass:** CurlWright drives **real Google Chrome** (`channel="chrome"`) with [Patchright](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright)'s protocol-level stealth (`navigator.webdriver` hidden, no CDP `Runtime.enable` leak), so it transparently handles passive Cloudflare (CDN) and has a real shot at managed / "I'm Under Attack" / non-interactive challenges.
+>
+> **Run headed for the best results.** The default (no `--headless`/`--no-gui`) launches a visible Chrome with a genuine, consistent fingerprint — the strongest stealth. `--no-gui`/`--headless` use Chrome's new headless for servers/CI, but the browser still advertises `HeadlessChrome` in its user agent, which strict bot-management may flag; on a VPS, run under `xvfb` for headed-quality stealth.
+>
+> It is **not** a guaranteed solver for **interactive** Turnstile or hardened anti-bot setups (e.g. the `nowsecure.nl` nodriver demo) — those generally require a paid CAPTCHA-solving service, which CurlWright does not bundle. It detects the challenge type and progresses what it can; when a page cannot be cleared it fails loudly with diagnostics (exit code 10).
 
 ### Key Features
 
