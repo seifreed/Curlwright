@@ -26,7 +26,6 @@ from curlwright.domain import (
     CurlRequest,
     ExecutionMetadata,
     ExecutionResult,
-    FetchResponse,
     HttpRuntimePort,
     PageProbePort,
     PersistedSessionPort,
@@ -83,7 +82,6 @@ class RequestExecutor:
         self.telemetry = telemetry
         self.bypass_policy = bypass_policy
         self.session_store = session_store
-        self.domain_state_store = session_store
         self.initialized = False
         self.persist_cookies = persist_cookies
         self.cookie_manager = cookie_store if persist_cookies else None
@@ -260,34 +258,6 @@ class RequestExecutor:
     def _extract_domain(self, url: str) -> str:
         parsed = urlparse(url)
         return parsed.hostname or parsed.netloc
-
-    def _extract_base_url(self, url: str) -> str:
-        return self.http_runtime.extract_base_url(url)
-
-    def _build_fetch_options(self, request: CurlRequest):
-        return self.http_runtime.build_fetch_options(request)
-
-    async def _perform_fetch_request(self, page, request: CurlRequest, timeout_ms: int) -> FetchResponse:
-        return await self.http_runtime.perform_fetch_request(page, request, timeout_ms)
-
-    async def _apply_request_context(self, page, request: CurlRequest) -> None:
-        await self.http_runtime.apply_request_context(page, request, self._extract_domain)
-
-    async def _warm_up_page(
-        self,
-        page,
-        request: CurlRequest,
-        timeout_ms: int,
-        *,
-        console_events: list[dict[str, str]],
-    ) -> None:
-        await self.http_runtime.warm_up_page(
-            page,
-            request,
-            timeout_ms,
-            cookie_manager=self.cookie_manager,
-            trusted_session=self._has_trusted_session(request),
-        )
 
     def _get_effective_timeout(self, request: CurlRequest) -> int:
         return request.timeout or self.default_timeout

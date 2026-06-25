@@ -116,7 +116,7 @@ def test_has_trusted_session_requires_state_and_cookie_presence(tmp_path):
     assert executor._has_trusted_session(request) is False
 
     domain_key = executor._get_domain_session_key(request)
-    executor.domain_state_store.mark_success(
+    executor.session_store.mark_success(
         domain_key=domain_key,
         domain="example.com",
         user_agent=executor._effective_user_agent,
@@ -142,7 +142,7 @@ def test_has_trusted_session_returns_false_when_cookie_persistence_is_disabled(t
     request = CurlRequest(url="https://example.com/data")
     domain_key = executor._get_domain_session_key(request)
 
-    executor.domain_state_store.mark_success(
+    executor.session_store.mark_success(
         domain_key=domain_key,
         domain="example.com",
         user_agent=executor._effective_user_agent,
@@ -204,7 +204,7 @@ async def test_perform_fetch_request_supports_head_without_body():
         assert executor.browser_manager is not None
         page = await executor.browser_manager.create_page()
         await page.goto(f"http://127.0.0.1:{server.server_port}/json", wait_until="domcontentloaded")
-        payload = await executor._perform_fetch_request(page, request, timeout_ms=2_000)
+        payload = await executor.http_runtime.perform_fetch_request(page, request, 2_000)
 
         assert payload.status == 200
         assert payload.body == ""
@@ -232,7 +232,7 @@ async def test_execute_request_marks_success_for_clear_response(tmp_path):
         result = await executor._execute_request(request)
 
         domain_key = executor._get_domain_session_key(request)
-        state = executor.domain_state_store.get(domain_key)
+        state = executor.session_store.get(domain_key)
 
         assert result.response.status == 200
         assert state is not None
@@ -295,7 +295,13 @@ async def test_human_warmup_visits_base_url_before_bypass(tmp_path):
         await executor._ensure_initialized(request, user_agent=executor._get_retry_user_agent(0))
         assert executor.browser_manager is not None
         page = await executor.browser_manager.create_page()
-        await executor._warm_up_page(page, request, timeout_ms=2_000, console_events=[])
+        await executor.http_runtime.warm_up_page(
+            page,
+            request,
+            2_000,
+            cookie_manager=executor.cookie_manager,
+            trusted_session=executor._has_trusted_session(request),
+        )
         assert page.url == f"http://127.0.0.1:{server.server_port}/"
         await page.close()
     finally:
@@ -326,7 +332,7 @@ async def test_execute_request_marks_failure_for_blocked_final_response(tmp_path
 
         failure = exc_info.value
         domain_key = executor._get_domain_session_key(request)
-        state = executor.domain_state_store.get(domain_key)
+        state = executor.session_store.get(domain_key)
 
         assert failure.assessment.outcome == "blocked"
         assert state is not None
@@ -398,7 +404,7 @@ def test_fetch_option_helpers_cover_existing_content_type_and_base_url():
         headers={"Content-Type": "application/custom"},
     )
 
-    options = executor._build_fetch_options(request)
+    options = executor.http_runtime.build_fetch_options(request)
 
     assert options["headers"]["Content-Type"] == "application/custom"
-    assert executor._extract_base_url(request.url) == "https://example.com"
+    assert executor.http_runtime.extract_base_url(request.url) == "https://example.com"

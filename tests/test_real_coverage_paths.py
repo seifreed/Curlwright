@@ -348,7 +348,7 @@ async def test_playwright_runtime_and_application_executor_remaining_paths(tmp_p
     )()
     request = CurlRequest(url="https://example.com/path")
     await executor._ensure_initialized(request, user_agent=executor._get_retry_user_agent(0))
-    await executor._apply_request_context(FakePage(closed=False), request)
+    await executor.http_runtime.apply_request_context(FakePage(closed=False), request, executor._extract_domain)
     result = await executor._execute_request(request)
     assert result.response.status == 200
     assert manager.created == 2

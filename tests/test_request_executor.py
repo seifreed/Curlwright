@@ -19,7 +19,7 @@ def test_fetch_options_respect_redirect_and_post_defaults():
         follow_redirects=False,
     )
 
-    options = executor._build_fetch_options(request)
+    options = executor.http_runtime.build_fetch_options(request)
 
     assert options["redirect"] == "manual"
     assert options["headers"]["Content-Type"] == "application/x-www-form-urlencoded"
@@ -34,7 +34,7 @@ def test_json_post_preserves_json_content_type_default():
         data='{"hello":"world"}',
     )
 
-    options = executor._build_fetch_options(request)
+    options = executor.http_runtime.build_fetch_options(request)
 
     assert options["headers"]["Content-Type"] == "application/json"
 
