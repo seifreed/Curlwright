@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import threading
@@ -82,6 +83,40 @@ def test_pinned_user_agent_disables_rotation():
 
     assert executor._get_retry_user_agent(0) == "Custom/1.0"
     assert executor._get_retry_user_agent(2) == "Custom/1.0"
+
+
+@pytest.mark.parametrize("configured", [0, -5])
+def test_non_positive_timeout_clamps_to_one_second(configured):
+    executor = RequestExecutor(timeout=configured)
+    request = CurlRequest(url="https://example.com")
+
+    assert executor._get_effective_timeout(request) == 1
+
+
+def test_curl_max_time_overrides_but_still_clamped():
+    executor = RequestExecutor(timeout=30)
+    assert executor._get_effective_timeout(CurlRequest(url="https://x", timeout=5)) == 5
+
+
+@pytest.mark.parametrize("retries", [0, -1])
+def test_execute_attempts_at_least_once_for_non_positive_retries(retries, monkeypatch):
+    executor = RequestExecutor()
+    calls = {"n": 0}
+
+    async def _noop_init(request, *, user_agent):
+        return None
+
+    async def _boom(request):
+        calls["n"] += 1
+        raise RuntimeError("boom")
+
+    executor._ensure_initialized = _noop_init
+    executor._execute_request = _boom
+
+    with pytest.raises(RuntimeError, match="boom"):
+        asyncio.run(executor.execute("curl https://example.com", max_retries=retries, delay=0))
+    # Clamped to a single real attempt instead of silently skipping the loop.
+    assert calls["n"] == 1
 
 
 def test_has_trusted_session_requires_state_and_cookie_presence(tmp_path):

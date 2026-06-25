@@ -65,15 +65,12 @@ def test_parser_helpers_cover_remaining_branches():
 
 
 @pytest.mark.asyncio
-async def test_request_executor_covers_zero_retry_runtime_guard_and_cookie_branch(tmp_path):
+async def test_request_executor_runtime_guard_and_cookie_branch(tmp_path):
     executor = RequestExecutor(
         headless=True,
         no_gui=True,
         cookie_file=str(tmp_path / "cookies.pkl"),
     )
-
-    with pytest.raises(Exception, match="Failed to execute request after all retries"):
-        await executor.execute("curl https://example.com", max_retries=0, delay=0)
 
     with pytest.raises(RuntimeError, match="Browser manager is not initialized"):
         await executor._execute_request(CurlRequest(url="https://example.com"))

@@ -149,6 +149,10 @@ class RequestExecutor:
     async def execute(
         self, curl_command: str, max_retries: int = 3, delay: int = 5
     ) -> ResponsePayload:
+        # The request must be attempted at least once; a non-positive retry
+        # count would otherwise skip the loop and fail without ever trying.
+        max_retries = max(1, max_retries)
+        delay = max(0, delay)
         request = self.parser.parse(curl_command)
         execution_meta = self._build_execution_metadata(
             request=request,
@@ -308,7 +312,9 @@ class RequestExecutor:
         return parsed.hostname or parsed.netloc
 
     def _get_effective_timeout(self, request: CurlRequest) -> int:
-        return request.timeout or self.default_timeout
+        # Clamp to at least one second; a zero/negative timeout collapses the
+        # navigation/fetch budget to 0ms and surfaces opaque browser errors.
+        return max(1, request.timeout or self.default_timeout)
 
     def _get_http_credentials(self, request: CurlRequest) -> HttpCredentials | None:
         if not request.auth:
