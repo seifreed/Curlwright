@@ -1,5 +1,6 @@
 """Curl parser infrastructure."""
 
+import math
 import shlex
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -135,7 +136,9 @@ class CurlParser:
         except ValueError:
             logger.warning("Ignoring invalid --max-time value: %r", value)
             return None
-        if seconds <= 0:
+        # float() accepts "inf"/"nan"/"1e999" without raising; rounding those
+        # would blow up with OverflowError/ValueError, so reject them here.
+        if not math.isfinite(seconds) or seconds <= 0:
             return None
         return max(1, round(seconds))
 

@@ -36,6 +36,13 @@ def test_invalid_max_time_is_ignored_instead_of_crashing():
     assert request.timeout is None
 
 
+@pytest.mark.parametrize("value", ["1e999", "inf", "-inf", "nan"])
+def test_non_finite_max_time_is_ignored_instead_of_crashing(value):
+    request = CurlParser().parse(f"curl --max-time {value} https://example.com")
+
+    assert request.timeout is None
+
+
 def test_get_with_data_urlencode_stays_get_and_moves_data_to_query():
     request = CurlParser().parse(
         "curl -G --data-urlencode 'q=hello world' https://example.com/search"
