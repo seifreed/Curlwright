@@ -47,6 +47,11 @@ Examples:
         browser_group.add_argument("--no-persist-cookies", action="store_true", default=False, help="Disable automatic cookie load/save between runs")
         browser_group.add_argument("--bypass-attempts", type=int, default=3, help="Challenge-resolution attempts per request before the retry loop continues (default: 3)")
 
+        cookie_group = parser.add_argument_group("Cookie Options")
+        cookie_group.add_argument("--import-cookies", type=str, default=None, help="Load cookies from a JSON file into the jar before the request")
+        cookie_group.add_argument("--export-cookies", type=str, default=None, help="Write the captured session cookies to a JSON file after the request")
+        cookie_group.add_argument("--clear-cookies", action="store_true", default=False, help="Clear the persistent cookie jar before the request")
+
         retry_group = parser.add_argument_group("Retry Options")
         retry_group.add_argument("--retries", type=int, default=3, help="Number of retries on failure (default: 3)")
         retry_group.add_argument("--delay", type=int, default=5, help="Delay between retries in seconds (default: 5)")

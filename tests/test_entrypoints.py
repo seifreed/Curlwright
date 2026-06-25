@@ -50,6 +50,44 @@ def test_package_main_verbose_output():
     assert "Attempts: 1" in result.stdout
 
 
+def test_cli_clear_import_and_export_cookies(tmp_path):
+    server, thread = start_fixture_server()
+    url = f"http://127.0.0.1:{server.server_port}/json"
+    cookie_file = tmp_path / "cookies.pkl"
+    seed_file = tmp_path / "seed.json"
+    seed_file.write_text(
+        json.dumps([{"name": "seeded", "value": "1", "domain": "127.0.0.1", "path": "/"}])
+    )
+    export_file = tmp_path / "session.json"
+
+    try:
+        result = run_cli(
+            [
+                "-m",
+                "curlwright.main",
+                "-c",
+                f"curl {url}",
+                "--headless",
+                "--cookie-file",
+                str(cookie_file),
+                "--clear-cookies",
+                "--import-cookies",
+                str(seed_file),
+                "--export-cookies",
+                str(export_file),
+            ],
+            timeout=60,
+        )
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+    assert result.returncode == 0
+    assert export_file.exists()
+    exported = json.loads(export_file.read_text())
+    assert isinstance(exported, list)
+
+
 def test_root_script_writes_output_file(tmp_path):
     server, thread = start_fixture_server()
     url = f"http://127.0.0.1:{server.server_port}/json"

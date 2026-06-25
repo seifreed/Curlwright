@@ -75,6 +75,24 @@ def _write_result_output(
     print(rendered_output)
 
 
+def _apply_pre_run_cookie_options(executor, args) -> None:
+    cookie_manager = executor.cookie_manager
+    if cookie_manager is None:
+        if args.clear_cookies or args.import_cookies:
+            logger.warning("Cookie options ignored because cookie persistence is disabled")
+        return
+    if args.clear_cookies:
+        cookie_manager.clear_cookies()
+    if args.import_cookies:
+        cookie_manager.import_cookies_json(args.import_cookies)
+
+
+def _export_cookies(executor, args) -> None:
+    cookie_manager = executor.cookie_manager
+    if args.export_cookies and cookie_manager is not None:
+        cookie_manager.export_cookies_json(args.export_cookies)
+
+
 async def main() -> None:
     cli = CLI()
     args = cli.parse_arguments()
@@ -95,12 +113,14 @@ async def main() -> None:
             bypass_attempts=args.bypass_attempts,
             profile_dir=args.profile_dir,
         )
+        _apply_pre_run_cookie_options(executor, args)
         curl_command = _resolve_curl_command(args)
         result = await executor.execute(
             curl_command,
             max_retries=args.retries,
             delay=args.delay,
         )
+        _export_cookies(executor, args)
         _log_execution_summary(result)
         write_sarif_report(args.sarif_output, result=result)
         _write_result_output(result, args.output, args.verbose, args.json_output)
