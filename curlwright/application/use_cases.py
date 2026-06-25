@@ -15,7 +15,6 @@ from curlwright.domain import (
     FinalMetadata,
     HttpRuntimePort,
     PageProbePort,
-    PersistedSessionPort,
     ProtectionSnapshot,
     TelemetryPort,
 )
@@ -210,55 +209,6 @@ class ExecuteHttpFetch:
             "Bypass succeeded superficially but final response still looks blocked",
             assessment=assessment,
             artifact_dir=str(artifact_dir),
-        )
-
-
-class PersistSessionState:
-    def __init__(self, session_store: PersistedSessionPort):
-        self.session_store = session_store
-
-    def record_success(
-        self,
-        *,
-        domain_key: str,
-        domain: str,
-        user_agent: str,
-        proxy: str | None,
-        profile_dir: str | None,
-        final_url: str,
-        cookie_names: list[str],
-        artifact_dir: str | None,
-    ) -> None:
-        self.session_store.mark_success(
-            domain_key=domain_key,
-            domain=domain,
-            user_agent=user_agent,
-            proxy=proxy,
-            profile_dir=profile_dir,
-            final_url=final_url,
-            cookie_names=cookie_names,
-            artifact_dir=artifact_dir,
-        )
-
-    def record_failure(
-        self,
-        *,
-        domain_key: str,
-        domain: str,
-        user_agent: str,
-        proxy: str | None,
-        profile_dir: str | None,
-        final_url: str | None,
-        artifact_dir: str | None,
-    ) -> None:
-        self.session_store.mark_failure(
-            domain_key=domain_key,
-            domain=domain,
-            user_agent=user_agent,
-            proxy=proxy,
-            profile_dir=profile_dir,
-            final_url=final_url,
-            artifact_dir=artifact_dir,
         )
 
 

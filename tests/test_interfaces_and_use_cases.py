@@ -11,7 +11,6 @@ import curlwright.sarif as sarif_facade
 from curlwright.application import (
     BuildExecutionReport,
     ExecuteHttpFetch,
-    PersistSessionState,
     PrepareSession,
     ResolveProtection,
 )
@@ -158,20 +157,6 @@ class FakePage:
         self.url = url
         self.goto_calls.append(url)
         return {"url": url}
-
-
-class FakeSessionStore:
-    state_file = Path("state.json")
-
-    def __init__(self):
-        self.success_calls = []
-        self.failure_calls = []
-
-    def mark_success(self, **kwargs):
-        self.success_calls.append(kwargs)
-
-    def mark_failure(self, **kwargs):
-        self.failure_calls.append(kwargs)
 
 
 def test_contract_helpers_cover_success_and_failure_paths():
@@ -354,30 +339,6 @@ async def test_use_cases_cover_prepare_resolve_fetch_persist_and_report():
             timeout_ms=1000,
             console_events=[],
         )
-
-    store = FakeSessionStore()
-    persister = PersistSessionState(store)
-    persister.record_success(
-        domain_key="dk",
-        domain="example.com",
-        user_agent="ua",
-        proxy=None,
-        profile_dir="profile",
-        final_url="https://example.com",
-        cookie_names=["session"],
-        artifact_dir=None,
-    )
-    persister.record_failure(
-        domain_key="dk",
-        domain="example.com",
-        user_agent="ua",
-        proxy=None,
-        profile_dir="profile",
-        final_url=None,
-        artifact_dir="/tmp/a",
-    )
-    assert len(store.success_calls) == 1
-    assert len(store.failure_calls) == 1
 
     report = BuildExecutionReport()
     result = ExecutionResult(response=FetchResponse(status=200, headers={}, body="ok", url="https://example.com"))

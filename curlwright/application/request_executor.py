@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 from curlwright.application.use_cases import (
     BuildExecutionReport,
     ExecuteHttpFetch,
-    PersistSessionState,
     PrepareSession,
     ResolveProtection,
 )
@@ -113,7 +112,6 @@ class RequestExecutor:
             artifact_store=artifact_store,
             policy=bypass_policy,
         )
-        self.persist_session_state = PersistSessionState(session_store)
         self.build_execution_report = BuildExecutionReport()
 
     async def _ensure_initialized(self, request: CurlRequest, *, user_agent: str) -> None:
@@ -225,7 +223,7 @@ class RequestExecutor:
                 console_events=console_events,
             )
             context_cookies = await prepared.page.context.cookies()
-            self.persist_session_state.record_success(
+            self.session_store.mark_success(
                 domain_key=prepared.domain_key,
                 domain=prepared.domain,
                 user_agent=self._effective_user_agent,
@@ -237,7 +235,7 @@ class RequestExecutor:
             )
             return ExecutionResult(response=response_data, outcome=outcome)
         except BypassFailure as error:
-            self.persist_session_state.record_failure(
+            self.session_store.mark_failure(
                 domain_key=domain_key,
                 domain=domain,
                 user_agent=self._effective_user_agent,
