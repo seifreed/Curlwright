@@ -17,12 +17,8 @@ from curlwright.application import (
 from curlwright.domain import (
     BypassAssessment,
     BypassFailure,
-    ExecutionMetadata,
     ExecutionResult,
     FetchResponse,
-    RequestMetadata,
-    RuntimeMetadata,
-    StateMetadata,
 )
 from curlwright.domain.policy import (
     BypassAction,
@@ -43,35 +39,7 @@ from curlwright.infrastructure.browser_stealth import chrome_major_version
 from curlwright.infrastructure.bypass_classifier import selector_exists
 from curlwright.infrastructure.protection_runtime import ConsoleTelemetry, PlaywrightChallengeActuator, PlaywrightPageProbe
 
-
-def _execution_meta() -> ExecutionMetadata:
-    return ExecutionMetadata(
-        request=RequestMetadata(
-            url="https://example.com",
-            method="GET",
-            proxy=None,
-            verify_ssl=True,
-            timeout=30,
-            follow_redirects=False,
-        ),
-        runtime=RuntimeMetadata(
-            headless=True,
-            no_gui=True,
-            persist_cookies=True,
-            cookie_file="cookies.pkl",
-            state_file="state.json",
-            artifact_dir="artifacts",
-            profile_dir="profile",
-            persistent_profile=True,
-            bypass_attempts=3,
-            max_retries=1,
-            retry_delay_seconds=0,
-        ),
-        state=StateMetadata(
-            domain_key="example.com|direct|ua|profile",
-            trusted_session_before_request=False,
-        ),
-    )
+from tests.helpers import make_execution_meta
 
 
 class FakeRuntime:
@@ -162,7 +130,7 @@ class FakePage:
 def test_contract_helpers_cover_success_and_failure_paths():
     result = ExecutionResult(
         response=FetchResponse(status=200, headers={"x-test": "1"}, body="body", url="https://example.com"),
-        meta=_execution_meta(),
+        meta=make_execution_meta(),
     )
     failure = BypassFailure(
         "blocked",
@@ -188,7 +156,7 @@ def test_contract_helpers_cover_success_and_failure_paths():
 def test_sarif_helpers_cover_success_error_and_file_output(tmp_path):
     result = ExecutionResult(
         response=FetchResponse(status=204, headers={}, body="", url="https://example.com"),
-        meta=_execution_meta(),
+        meta=make_execution_meta(),
     )
     failure = BypassFailure(
         "blocked",
@@ -345,7 +313,7 @@ async def test_use_cases_cover_prepare_resolve_fetch_persist_and_report():
     policy = BypassPolicy()
     complete = report.complete(
         result=result,
-        execution_meta=_execution_meta(),
+        execution_meta=make_execution_meta(),
         outcome=policy.evaluate_fetch_result(ProtectionSnapshot(state=ChallengeState.CLEAR, final_url="https://example.com", status_code=200)),
         fallback_url="https://fallback",
     )

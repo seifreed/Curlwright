@@ -4,6 +4,14 @@ import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from curlwright.domain import (
+    AttemptRecord,
+    ExecutionMetadata,
+    RequestMetadata,
+    RuntimeMetadata,
+    StateMetadata,
+)
+
 
 class BaseFixtureHandler(BaseHTTPRequestHandler):
     """Shared response helpers for fixture HTTP handlers."""
@@ -54,3 +62,38 @@ def start_fixture_server():
     thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
     thread.start()
     return server, thread
+
+
+def make_execution_meta(
+    *,
+    cookie_file: str | None = "cookies.pkl",
+    attempts: list[AttemptRecord] | None = None,
+) -> ExecutionMetadata:
+    return ExecutionMetadata(
+        request=RequestMetadata(
+            url="https://example.com",
+            method="GET",
+            proxy=None,
+            verify_ssl=True,
+            timeout=30,
+            follow_redirects=False,
+        ),
+        runtime=RuntimeMetadata(
+            headless=True,
+            no_gui=True,
+            persist_cookies=True,
+            cookie_file=cookie_file,
+            state_file="state.json",
+            artifact_dir="artifacts",
+            profile_dir="profile",
+            persistent_profile=True,
+            bypass_attempts=3,
+            max_retries=1,
+            retry_delay_seconds=0,
+        ),
+        state=StateMetadata(
+            domain_key="example.com|direct|ua|profile",
+            trusted_session_before_request=False,
+        ),
+        attempts=attempts or [],
+    )
