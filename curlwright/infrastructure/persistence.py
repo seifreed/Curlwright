@@ -20,6 +20,19 @@ type CookieNames = list[str]
 logger = setup_logger(__name__)
 
 
+def _restrict_to_owner(path: Path) -> None:
+    """Restrict a credential file to owner read/write (0600).
+
+    The cookie jar and bypass state hold session/clearance cookies, which are
+    bearer credentials; the default 0644 would expose them to other local
+    users. chmod is best-effort (filesystems without POSIX modes are ignored).
+    """
+    try:
+        path.chmod(0o600)
+    except OSError as error:
+        logger.debug("Could not restrict permissions on %s: %s", path, error)
+
+
 def _domains_related(target: str, cookie_domain: str) -> bool:
     """Return True when target and a cookie's domain are the same host or one
     is a subdomain of the other, matching on dot boundaries.
@@ -53,6 +66,7 @@ class CookieManager:
             self.cookies = await context.cookies()
             with open(self.cookie_file, "w", encoding="utf-8") as file_handle:
                 json.dump(self.cookies, file_handle)
+            _restrict_to_owner(self.cookie_file)
             logger.info("Saved %s cookies to %s", len(self.cookies), self.cookie_file)
         except Exception as error:
             logger.error("Failed to save cookies: %s", error)
@@ -89,6 +103,7 @@ class CookieManager:
         try:
             with open(output_file, "w") as file_handle:
                 json.dump(self.cookies, file_handle, indent=2)
+            _restrict_to_owner(Path(output_file))
             logger.info("Exported cookies to %s", output_file)
         except Exception as error:
             logger.error("Failed to export cookies: %s", error)
@@ -99,6 +114,7 @@ class CookieManager:
                 self.cookies = json.load(file_handle)
             with open(self.cookie_file, "w", encoding="utf-8") as file_handle:
                 json.dump(self.cookies, file_handle)
+            _restrict_to_owner(self.cookie_file)
             logger.info("Imported %s cookies from %s", len(self.cookies), input_file)
             return True
         except Exception as error:
@@ -141,6 +157,7 @@ class DomainStateStore:
     def _persist(self) -> None:
         serialized_state = {key: asdict(value) for key, value in self._state.items()}
         self.state_file.write_text(json.dumps(serialized_state, indent=2, sort_keys=True))
+        _restrict_to_owner(self.state_file)
 
     def get(self, domain_key: str) -> DomainBypassState | None:
         self._ensure_loaded()

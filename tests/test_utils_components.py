@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import stat
 import time
 import uuid
 from pathlib import Path
@@ -102,6 +104,32 @@ def test_domain_state_store_persists_success_and_failure(tmp_path):
     assert failed_record is not None
     assert failed_record.last_status == "failed"
     assert failed_record.failure_count == 1
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file modes only")
+def test_credential_files_are_written_owner_only(tmp_path):
+    cookie_file = tmp_path / "cookies.json"
+    manager = CookieManager(str(cookie_file))
+    asyncio.run(manager.save_cookies(FakeCookieContext([{"name": "cf_clearance", "value": "s"}])))
+    assert stat.S_IMODE(cookie_file.stat().st_mode) == 0o600
+
+    state_file = tmp_path / "state.json"
+    store = DomainStateStore(str(state_file))
+    store.mark_success(
+        domain_key="example.com|direct|ua",
+        domain="example.com",
+        user_agent="ua",
+        proxy=None,
+        profile_dir=None,
+        final_url="https://example.com/ok",
+        cookie_names=["cf_clearance"],
+        artifact_dir=None,
+    )
+    assert stat.S_IMODE(state_file.stat().st_mode) == 0o600
+
+    export_file = tmp_path / "export.json"
+    manager.export_cookies_json(str(export_file))
+    assert stat.S_IMODE(export_file.stat().st_mode) == 0o600
 
 
 def test_cookie_domain_matching_respects_dot_boundaries(tmp_path):
