@@ -6,7 +6,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "curlwright"
 FACADE_MODULES = {
-    ROOT / "app.py",
     ROOT / "contracts.py",
     ROOT / "sarif.py",
 }
