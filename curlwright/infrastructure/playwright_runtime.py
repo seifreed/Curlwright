@@ -40,6 +40,7 @@ class PlaywrightRequestRuntime:
         self, page, request: CurlRequest, timeout_ms: int
     ) -> FetchResponse:
         fetch_options = self.build_fetch_options(request)
+        logger.debug("Performing in-page %s fetch to %s", request.method, request.url)
         response = await page.evaluate(
             """
             async ({ url, options, timeoutMs }) => {
@@ -66,7 +67,14 @@ class PlaywrightRequestRuntime:
             """,
             {"url": request.url, "options": fetch_options, "timeoutMs": timeout_ms},
         )
-        return FetchResponse.from_payload(response)
+        fetch_response = FetchResponse.from_payload(response)
+        logger.debug(
+            "In-page fetch to %s returned HTTP %s (%s bytes)",
+            fetch_response.url or request.url,
+            fetch_response.status,
+            len(fetch_response.body),
+        )
+        return fetch_response
 
     async def apply_request_context(self, page, request: CurlRequest, extract_domain) -> None:
         if request.headers:
