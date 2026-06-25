@@ -11,6 +11,7 @@ import pytest
 from playwright.async_api import async_playwright
 
 import curlwright.main as package_main
+from curlwright.contracts import EXIT_IO_ERROR, EXIT_PARSE_ERROR
 from curlwright.infrastructure.browser_manager import BrowserManager
 from curlwright.infrastructure.bypass_manager import BypassManager
 
@@ -251,5 +252,5 @@ def test_package_main_failure_payload_contract():
     assert parse_payload["schema_version"] == 1
     assert parse_payload["kind"] == "curlwright-error"
     assert parse_payload["ok"] is False
-    assert parse_payload["exit_code"] == package_main.EXIT_PARSE_ERROR
-    assert io_payload["exit_code"] == package_main.EXIT_IO_ERROR
+    assert parse_payload["exit_code"] == EXIT_PARSE_ERROR
+    assert io_payload["exit_code"] == EXIT_IO_ERROR

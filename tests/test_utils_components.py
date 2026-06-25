@@ -4,7 +4,6 @@ import asyncio
 import logging
 import time
 import uuid
-from pathlib import Path
 
 import pytest
 

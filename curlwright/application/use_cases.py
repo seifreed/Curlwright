@@ -17,7 +17,6 @@ from curlwright.domain import (
     PageProbePort,
     PersistedSessionPort,
     ProtectionSnapshot,
-    RequestPolicy,
     TelemetryPort,
 )
 from curlwright.domain.policy import BypassAction, BypassDecision, BypassPolicy, TrustedSession

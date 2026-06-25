@@ -77,7 +77,6 @@ class RequestExecutor:
         self.no_gui = no_gui
         self.parser = parser
         self.http_runtime = http_runtime
-        self.request_runtime = http_runtime
         self.page_probe = page_probe
         self.challenge_actuator = challenge_actuator
         self.artifact_store = artifact_store
