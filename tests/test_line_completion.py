@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-import threading
 from argparse import Namespace
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -52,51 +50,6 @@ def test_package_cli_inserts_project_root_on_fresh_load():
     assert callable(module.main)
 
 
-class _TurnstileFixtureServer(ThreadingHTTPServer):
-    pass
-
-
-class _TurnstileFixtureHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path.split("?", 1)[0] == "/turnstile-clear":
-            self._send_html(
-                """
-                <html>
-                  <head><title>Verify you are human</title></head>
-                  <body>
-                    <div class="cf-turnstile">widget</div>
-                    <button id="solve-turnstile" onclick="
-                      document.querySelector('.cf-turnstile').remove();
-                      this.remove();
-                    ">solve</button>
-                  </body>
-                </html>
-                """
-            )
-            return
-
-        self.send_response(404)
-        self.end_headers()
-
-    def log_message(self, format, *args):
-        return
-
-    def _send_html(self, body: str):
-        encoded = body.encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
-
-
-def _start_turnstile_server():
-    server = _TurnstileFixtureServer(("127.0.0.1", 0), _TurnstileFixtureHandler)
-    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
-    thread.start()
-    return server, thread
-
-
 @pytest.mark.asyncio
 async def test_browser_manager_create_page_initializes_lazily():
     manager = BrowserManager(headless=True, no_gui=True)
@@ -122,30 +75,6 @@ async def test_browser_manager_initializes_with_proxy_branch():
         assert manager.browser is not None
     finally:
         await manager.close()
-
-
-@pytest.mark.asyncio
-async def test_browser_manager_handle_turnstile_success_branch():
-    class Locator:
-        def __init__(self):
-            self.calls = 0
-
-        async def count(self):
-            self.calls += 1
-            return 1 if self.calls == 1 else 0
-
-    class Page:
-        def __init__(self):
-            self._locator = Locator()
-
-        def locator(self, _selector):
-            return self._locator
-
-        async def wait_for_load_state(self, *_args, **_kwargs):
-            return None
-
-    manager = BrowserManager()
-    assert await manager.handle_turnstile(Page(), timeout=1) is True
 
 
 @pytest.mark.asyncio

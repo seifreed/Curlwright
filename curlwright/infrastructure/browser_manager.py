@@ -3,8 +3,7 @@
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from curlwright.infrastructure.browser_challenge_monitor import handle_turnstile, wait_for_cloudflare
-from curlwright.infrastructure.browser_stealth import build_browser_init_script, chrome_major_version
+from curlwright.infrastructure.browser_stealth import build_browser_init_script
 from curlwright.infrastructure.logging import setup_logger
 from curlwright.runtime import ensure_supported_python
 
@@ -52,9 +51,6 @@ class BrowserManager:
 
     def _get_default_user_agent(self) -> str:
         return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
-
-    def _chrome_major_version(self) -> str:
-        return chrome_major_version(self.user_agent)
 
     async def initialize(self) -> None:
         try:
@@ -196,15 +192,3 @@ class BrowserManager:
             logger.info("Browser closed successfully")
         except Exception as error:
             logger.error("Error closing browser: %s", error)
-
-    async def wait_for_cloudflare(self, page, timeout: int = 30) -> bool:
-        result = await wait_for_cloudflare(page, timeout=timeout)
-        if not result:
-            logger.warning("Cloudflare challenge timeout after %s seconds", timeout)
-        return result
-
-    async def handle_turnstile(self, page, timeout: int = 30) -> bool:
-        result = await handle_turnstile(page, timeout=timeout)
-        if not result:
-            logger.warning("Turnstile timeout after %s seconds", timeout)
-        return result

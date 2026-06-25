@@ -145,12 +145,3 @@ async def test_browser_manager_close_tolerates_resource_failures():
     manager.playwright = FailingStopResource()
 
     await manager.close()
-
-
-@pytest.mark.asyncio
-async def test_browser_manager_wait_and_turnstile_return_false_on_locator_errors():
-    manager = BrowserManager()
-    failing_page = DefensivePage(locator_count_error=RuntimeError("locator failure"))
-
-    assert await manager.wait_for_cloudflare(failing_page, timeout=1) is False
-    assert await manager.handle_turnstile(failing_page, timeout=1) is False
