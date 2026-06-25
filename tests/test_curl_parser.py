@@ -24,6 +24,18 @@ def test_insecure_timeout_and_proxy_are_parsed():
     assert request.proxy == "http://proxy.internal:8080"
 
 
+def test_fractional_max_time_is_accepted_without_crashing():
+    request = CurlParser().parse("curl --max-time 2.5 https://example.com")
+
+    assert request.timeout == 2
+
+
+def test_invalid_max_time_is_ignored_instead_of_crashing():
+    request = CurlParser().parse("curl --max-time soon https://example.com")
+
+    assert request.timeout is None
+
+
 def test_get_with_data_urlencode_stays_get_and_moves_data_to_query():
     request = CurlParser().parse(
         "curl -G --data-urlencode 'q=hello world' https://example.com/search"

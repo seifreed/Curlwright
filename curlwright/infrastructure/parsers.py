@@ -4,9 +4,12 @@ import shlex
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from curlwright.domain import CurlRequest
+from curlwright.infrastructure.logging import setup_logger
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
+
+logger = setup_logger(__name__)
 
 type QueryPairs = list[tuple[str, str]]
 
@@ -84,7 +87,7 @@ class CurlParser:
             elif token in ["--max-time"]:
                 i += 1
                 if i < len(tokens):
-                    request.timeout = int(tokens[i])
+                    request.timeout = self._parse_max_time(tokens[i])
             elif token in ["-x", "--proxy"]:
                 i += 1
                 if i < len(tokens):
@@ -122,6 +125,19 @@ class CurlParser:
             if "=" in cookie:
                 key, value = cookie.split("=", 1)
                 request.cookies[key.strip()] = value.strip()
+
+    def _parse_max_time(self, value: str) -> int | None:
+        # curl accepts fractional seconds (e.g. --max-time 2.5); round up to
+        # at least one second and ignore non-numeric values rather than
+        # crashing the whole parse.
+        try:
+            seconds = float(value)
+        except ValueError:
+            logger.warning("Ignoring invalid --max-time value: %r", value)
+            return None
+        if seconds <= 0:
+            return None
+        return max(1, round(seconds))
 
     def _parse_auth(self, auth_string: str, request: CurlRequest):
         if ":" in auth_string:
