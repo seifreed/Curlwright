@@ -81,6 +81,13 @@ def compact_text(raw_text: str, limit: int = 500) -> str:
     return condensed[:limit]
 
 
+async def selector_exists(page, selector: str) -> bool:
+    try:
+        return await page.locator(selector).count() > 0
+    except Exception:
+        return False
+
+
 class BypassClassifier:
     """Encapsulates heuristics for Cloudflare page and payload classification."""
 
@@ -210,12 +217,6 @@ class BypassClassifier:
             body_excerpt=compact_text(response.body),
         )
 
-    async def _selector_exists(self, page, selector: str) -> bool:
-        try:
-            return await page.locator(selector).count() > 0
-        except Exception:
-            return False
-
     async def _apply_page_strategy(
         self,
         strategy: SignalStrategy,
@@ -229,7 +230,7 @@ class BypassClassifier:
     ) -> list[str]:
         indicators: list[str] = []
         for selector in strategy.selectors:
-            if await self._selector_exists(page, selector):
+            if await selector_exists(page, selector):
                 indicators.append(f"selector:{selector}")
         if strategy.patterns and any(
             pattern in lower_html or pattern in lower_title or pattern in lower_body

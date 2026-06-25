@@ -10,6 +10,7 @@ from curlwright.infrastructure.bypass_classifier import (
     TURNSTILE_SELECTORS,
     TURNSTILE_SUCCESS_PATTERNS,
     BypassClassifier,
+    selector_exists,
 )
 
 MANAGED_CHALLENGE_URL_MARKER = "__cf_chl_"
@@ -197,7 +198,7 @@ class PlaywrightChallengeActuator:
             if expect_interaction:
                 selectors_remaining = False
                 for selector in TURNSTILE_SELECTORS:
-                    if await self._selector_exists(page, selector):
+                    if await selector_exists(page, selector):
                         selectors_remaining = True
                         break
                 if not selectors_remaining:
@@ -229,9 +230,3 @@ class PlaywrightChallengeActuator:
             body_text = ""
         combined = f"{title}\n{body_text}"
         return any(pattern in combined for pattern in patterns)
-
-    async def _selector_exists(self, page, selector: str) -> bool:
-        try:
-            return await page.locator(selector).count() > 0
-        except Exception:
-            return False

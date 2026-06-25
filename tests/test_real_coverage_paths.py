@@ -352,7 +352,7 @@ async def test_playwright_runtime_and_application_executor_remaining_paths(tmp_p
 
 
 @pytest.mark.asyncio
-async def test_protection_runtime_remaining_defensive_paths():
+async def test_protection_runtime_remaining_defensive_paths(monkeypatch):
     from curlwright.infrastructure.protection_runtime import PlaywrightChallengeActuator
 
     actuator = PlaywrightChallengeActuator()
@@ -411,6 +411,8 @@ async def test_protection_runtime_remaining_defensive_paths():
 
     actuator._turnstile_response_ready = fake_ready
     actuator._page_contains_any = fake_contains
-    actuator._selector_exists = fake_exists
+    monkeypatch.setattr(
+        "curlwright.infrastructure.protection_runtime.selector_exists", fake_exists
+    )
     await actuator._wait_for_turnstile_progress(SelectorPage(), timeout_ms=10, expect_interaction=True)
     assert selector_calls["count"] >= 1

@@ -41,6 +41,7 @@ from curlwright.interfaces.contracts import (
 )
 from curlwright.interfaces.sarif import build_sarif_report, write_sarif_report, _level_for_error, _rule_id_for_exit_code
 from curlwright.infrastructure.browser_stealth import chrome_major_version
+from curlwright.infrastructure.bypass_classifier import selector_exists
 from curlwright.infrastructure.protection_runtime import ConsoleTelemetry, PlaywrightChallengeActuator, PlaywrightPageProbe
 
 
@@ -590,4 +591,4 @@ async def test_protection_runtime_components_cover_remaining_branches():
             return FailingLocator()
 
     assert await actuator._page_contains_any(PageAny(), ["hello"]) is True
-    assert await actuator._selector_exists(SelectorPage(), "div") is False
+    assert await selector_exists(SelectorPage(), "div") is False
