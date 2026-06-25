@@ -389,18 +389,29 @@ async def test_protection_runtime_remaining_defensive_paths(monkeypatch):
 
         def nth(self, index):
             class Nth:
-                async def bounding_box(self_inner):
+                async def bounding_box(self_inner, *, timeout=None):
                     if index == 0:
                         return None
                     return {"x": 1, "y": 2, "width": 10, "height": 20}
 
             return Nth()
 
+    class EmptyFrameLocator:
+        def locator(self, _selector):
+            class Inner:
+                async def count(self_inner):
+                    return 0
+
+            return Inner()
+
     class ClickPage:
         mouse = Mouse()
 
         def locator(self, _selector):
             return Locator()
+
+        def frame_locator(self, _selector):
+            return EmptyFrameLocator()
 
     assert await actuator._click_turnstile_checkbox(ClickPage()) is False
 

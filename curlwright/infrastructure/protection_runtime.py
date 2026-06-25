@@ -19,6 +19,11 @@ logger = setup_logger(__name__)
 MANAGED_CHALLENGE_URL_MARKER = "__cf_chl_"
 MANAGED_CHALLENGE_HTML_MARKERS = ("window._cf_chl_opt", "/cdn-cgi/challenge-platform/")
 
+# bounding_box() defaults to Playwright's 30s actionability wait; on a
+# re-rendering cross-origin Turnstile iframe that wait never settles and stalls
+# the whole bypass. Cap every box probe so a missing element degrades fast.
+BOX_TIMEOUT_MS = 1_500
+
 
 def _html_shows_managed_challenge(html: str) -> bool:
     lowered = html.lower()
@@ -175,31 +180,60 @@ class PlaywrightChallengeActuator:
 
     async def _click_turnstile_checkbox(self, page) -> bool:
         # The Turnstile checkbox sits on the LEFT of the widget (~30px in,
-        # vertically centred), not the centre, so we aim there and dispatch a
-        # trusted, human-like mouse move + click (CDP Input → isTrusted=True,
-        # which also reaches the cross-origin challenge iframe by coordinate).
-        anchor_selectors = [
+        # vertically centred). We dispatch a trusted, human-like mouse move +
+        # click (CDP Input → isTrusted=True, which also reaches the cross-origin
+        # challenge iframe by coordinate). Phase 1 spends the whole window on the
+        # REAL widget iframe so a slow-rendering iframe is not pre-empted by
+        # clicking the always-present div.cf-turnstile wrapper.
+        iframe_selectors = [
             "iframe[src*='challenges.cloudflare.com']",
             "iframe[src*='turnstile']",
-            "div.cf-turnstile",
         ]
-        deadline = asyncio.get_event_loop().time() + 5.0
+        deadline = asyncio.get_event_loop().time() + 6.0
         while asyncio.get_event_loop().time() < deadline:
-            for selector in anchor_selectors:
-                box = await self._first_visible_box(page, selector)
-                if box is None:
+            for selector in iframe_selectors:
+                point = await self._turnstile_checkbox_point(page, selector)
+                if point is None:
                     continue
-                target_x, target_y = _checkbox_point(box)
-                try:
-                    await page.mouse.move(target_x, target_y, steps=12)
-                    await page.mouse.click(target_x, target_y)
-                    await asyncio.sleep(0.5)
+                if await self._dispatch_checkbox_click(page, *point):
                     return True
-                except Exception:
-                    logger.debug("turnstile checkbox click failed", exc_info=True)
-                    continue
             await asyncio.sleep(0.4)
+        # Phase 2: container fallback ONLY if the iframe never rendered.
+        box = await self._first_visible_box(page, "div.cf-turnstile")
+        if box is not None:
+            return await self._dispatch_checkbox_click(page, *_checkbox_point(box))
         return False
+
+    async def _turnstile_checkbox_point(self, page, selector):
+        # Best effort: descend into the (possibly nested) challenge frame and
+        # target the real checkbox element. Playwright's bounding_box() on an
+        # element inside an iframe is already page-relative, so no offset math.
+        # Falls back to the iframe-box heuristic when the inner element is not
+        # queryable (closed shadow DOM / nested cross-origin frame — the norm).
+        try:
+            inner = page.frame_locator(selector).locator(
+                "input[type='checkbox'], [role='checkbox'], label"
+            )
+            if await inner.count() > 0:
+                box = await inner.first.bounding_box(timeout=BOX_TIMEOUT_MS)
+                if box and box["width"] > 0 and box["height"] > 0:
+                    return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+        except Exception:
+            logger.debug("turnstile inner checkbox lookup failed", exc_info=True)
+        box = await self._first_visible_box(page, selector)
+        if box is None:
+            return None
+        return _checkbox_point(box)
+
+    async def _dispatch_checkbox_click(self, page, x: float, y: float) -> bool:
+        try:
+            await page.mouse.move(x, y, steps=12)
+            await page.mouse.click(x, y)
+            await asyncio.sleep(0.5)
+            return True
+        except Exception:
+            logger.debug("turnstile checkbox click failed", exc_info=True)
+            return False
 
     async def _first_visible_box(self, page, selector: str):
         try:
@@ -210,7 +244,7 @@ class PlaywrightChallengeActuator:
             return None
         for index in range(count):
             try:
-                box = await locator.nth(index).bounding_box()
+                box = await locator.nth(index).bounding_box(timeout=BOX_TIMEOUT_MS)
             except Exception:
                 logger.debug("turnstile anchor %s box failed", selector, exc_info=True)
                 continue

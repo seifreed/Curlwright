@@ -506,7 +506,7 @@ async def test_protection_runtime_components_cover_remaining_branches():
             box = self.boxes[index]
 
             class Nth:
-                async def bounding_box(self_inner):
+                async def bounding_box(self_inner, *, timeout=None):
                     return box
 
             return Nth()
