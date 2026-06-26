@@ -18,6 +18,7 @@ class RequestExecutor(ApplicationRequestExecutor):
         artifact_dir: str | None = None,
         bypass_attempts: int = 3,
         profile_dir: str | None = None,
+        engine: str = "patchright",
     ):
         wired_executor = create_request_executor(
             headless=headless,
@@ -30,6 +31,7 @@ class RequestExecutor(ApplicationRequestExecutor):
             artifact_dir=artifact_dir,
             bypass_attempts=bypass_attempts,
             profile_dir=profile_dir,
+            engine=engine,
         )
         super().__init__(
             parser=wired_executor.parser,
@@ -49,6 +51,7 @@ class RequestExecutor(ApplicationRequestExecutor):
             no_gui=no_gui,
             bypass_attempts=bypass_attempts,
             profile_dir=profile_dir,
+            engine=engine,
         )
 
 

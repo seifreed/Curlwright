@@ -28,6 +28,7 @@ from curlwright.domain import (
     HttpRuntimePort,
     PageProbePort,
     PersistedSessionPort,
+    ProtectionSnapshot,
     RequestMetadata,
     RequestParserPort,
     ResponsePayload,
@@ -70,10 +71,12 @@ class RequestExecutor:
         persist_cookies: bool = True,
         bypass_attempts: int = 3,
         profile_dir: str | None = None,
+        engine: str = "patchright",
     ):
         self.browser_manager: BrowserManagerPort | None = None
         self.default_timeout = timeout
         self.headless = headless
+        self.engine = engine
         self.user_agent = user_agent
         self.no_gui = no_gui
         self.parser = parser
@@ -136,6 +139,7 @@ class RequestExecutor:
                 verify_ssl=request.verify_ssl,
                 http_credentials=self._get_http_credentials(request),
                 profile_dir=self.profile_dir,
+                engine=self.engine,
             )
         )
         await self.browser_manager.initialize()
@@ -237,6 +241,8 @@ class RequestExecutor:
     async def _execute_request(self, request: CurlRequest) -> ExecutionResult:
         if not self.browser_manager:
             raise RuntimeError("Browser manager is not initialized")
+        if self.engine == "nodriver":
+            return await self._execute_request_nodriver(request)
         page = await self.browser_manager.create_page()
         effective_timeout_ms = self._get_effective_timeout(request) * 1000
         domain = self._extract_domain(request.url)
@@ -305,6 +311,64 @@ class RequestExecutor:
                 await self.cookie_manager.save_cookies(page.context)
             if not page.is_closed():
                 await page.close()
+
+    async def _execute_request_nodriver(self, request: CurlRequest) -> ExecutionResult:
+        # The nodriver engine clears the challenge on navigation and reads the
+        # page back through an in-page fetch; it does not go through the
+        # page/use-case pipeline. Classification and session bookkeeping are
+        # reused so the outcome is identical to the Patchright path.
+        effective_timeout_ms = self._get_effective_timeout(request) * 1000
+        domain = self._extract_domain(request.url)
+        domain_key = self._get_domain_session_key(request)
+        response_data, cookie_names, html = await self.browser_manager.fetch(
+            request, timeout_ms=effective_timeout_ms
+        )
+        assessment = self.page_probe.assess_response_payload(response_data.to_payload())
+        outcome = self.bypass_policy.evaluate_fetch_result(
+            ProtectionSnapshot.from_assessment(assessment)
+        )
+        if outcome.kind == "success":
+            self.session_store.mark_success(
+                domain_key=domain_key,
+                domain=domain,
+                user_agent=self._effective_user_agent or "chrome-native",
+                proxy=request.proxy,
+                profile_dir=self.profile_dir,
+                final_url=response_data.url or request.url,
+                cookie_names=cookie_names,
+                artifact_dir=None,
+            )
+            return ExecutionResult(response=response_data, outcome=outcome)
+        artifact_dir = self._save_nodriver_artifact(request.url, html)
+        self.session_store.mark_failure(
+            domain_key=domain_key,
+            domain=domain,
+            user_agent=self._effective_user_agent or "chrome-native",
+            proxy=request.proxy,
+            profile_dir=self.profile_dir,
+            final_url=assessment.final_url,
+            artifact_dir=artifact_dir,
+        )
+        raise BypassFailure(
+            "Bypass (nodriver) did not reach a trusted page state",
+            assessment=assessment,
+            artifact_dir=artifact_dir,
+        )
+
+    def _save_nodriver_artifact(self, url: str, html: str) -> str | None:
+        try:
+            from curlwright.infrastructure.bypass_artifacts import artifact_directory_name
+
+            artifact_dir = Path(self.artifact_root) / artifact_directory_name(
+                url, "nodriver-blocked"
+            )
+            artifact_dir.mkdir(parents=True, exist_ok=True)
+            (artifact_dir / "page.html").write_text(html or "")
+            logger.info("Saved nodriver blocked-response diagnostics to %s", artifact_dir)
+            return str(artifact_dir)
+        except Exception:
+            logger.debug("nodriver artifact save failed", exc_info=True)
+            return None
 
     def _extract_domain(self, url: str) -> str:
         parsed = urlparse(url)

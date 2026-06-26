@@ -69,6 +69,7 @@ class BrowserSessionConfig:
     verify_ssl: bool
     http_credentials: dict[str, str] | None
     profile_dir: str
+    engine: str = "patchright"
 
 
 @dataclass

@@ -37,6 +37,16 @@ Examples:
 
         browser_group = parser.add_argument_group("Browser Options")
         browser_group.add_argument(
+            "--engine",
+            choices=["patchright", "nodriver"],
+            default="patchright",
+            help=(
+                "Browser engine. 'patchright' (default) handles Turnstile. "
+                "'nodriver' additionally clears Cloudflare managed challenges "
+                "('Just a moment'), but only in headed mode (omit --headless)."
+            ),
+        )
+        browser_group.add_argument(
             "--headless",
             action="store_true",
             default=False,

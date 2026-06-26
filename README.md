@@ -34,7 +34,9 @@ It is useful when a plain HTTP client is not enough because the target requires 
 >
 > **Run headed for the best results.** The default (no `--headless`/`--no-gui`) launches a visible Chrome with a genuine, consistent fingerprint — the strongest stealth. `--no-gui`/`--headless` use Chrome's new headless for servers/CI, but the browser still advertises `HeadlessChrome` in its user agent, which strict bot-management may flag; on a VPS, run under `xvfb` for headed-quality stealth.
 >
-> It is **not** a guaranteed solver for **interactive** Turnstile or hardened anti-bot setups (e.g. the `nowsecure.nl` nodriver demo) — those generally require a paid CAPTCHA-solving service, which CurlWright does not bundle. It detects the challenge type and progresses what it can; when a page cannot be cleared it fails loudly with diagnostics (exit code 10).
+> **Hardened managed challenges → `--engine nodriver`.** The default Patchright engine clears passive CF and Turnstile, but the toughest "Just a moment" managed challenges fingerprint Playwright's automation-protocol signature (`Runtime.enable`/`Target.setAutoAttach`) and stall at HTTP 403. Pass `--engine nodriver` to drive Chrome over a plain CDP WebSocket (no such signature), which clears those interstitials. **nodriver requires headed mode** (omit `--headless`); headless is detected just like Patchright. A flagged/datacenter IP still gets blocked regardless of engine — use a residential proxy via curl `-x`.
+>
+> It is **not** a guaranteed solver for every hardened anti-bot setup — some still require a paid CAPTCHA service, which CurlWright does not bundle. It detects the challenge type and progresses what it can; when a page cannot be cleared it fails loudly with diagnostics (exit code 10).
 
 ### Key Features
 
@@ -132,6 +134,7 @@ curlwright -c "curl https://target.example" --timeout 60 --retries 5 --delay 3
 |--------|-------------|
 | `-c, --curl` | Curl command to execute |
 | `-f, --file` | File containing the curl command |
+| `--engine` | Browser engine: `patchright` (default) or `nodriver` (clears hardened managed challenges; headed only) |
 | `--headless` | Run Chromium headless |
 | `--no-gui` | Server-oriented mode without display requirements |
 | `--user-agent` | Override the browser user agent |

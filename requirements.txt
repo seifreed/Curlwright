@@ -1,3 +1,4 @@
 playwright>=1.40.0
 patchright>=1.52
+nodriver>=0.50
 asyncio>=3.4.3
