@@ -111,7 +111,6 @@ def test_browser_manager_unit_paths_cover_remaining_branches(tmp_path):
             self.closed = True
 
     manager = BrowserManager()
-    manager._persistent_context = False
     manager.browser = FakeBrowser()
     manager.context = FakeContext([], blank_page)
     manager.page = FakePage(url="https://example.com", closed=True)

@@ -1,5 +1,6 @@
 """Browser lifecycle adapter driving real Chrome through Patchright for stealth."""
 
+import asyncio
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -49,7 +50,6 @@ class BrowserManager:
         self.browser: Browser | None = None
         self.context: BrowserContext | None = None
         self.page: Page | None = None
-        self._persistent_context = True
         self._playwright_factory = playwright_factory
 
     async def initialize(self) -> None:
@@ -64,16 +64,35 @@ class BrowserManager:
             self.playwright = await factory().start()
             launch_options = self._build_launch_options()
             context_options = self._build_context_options()
-            self.context = await self.playwright.chromium.launch_persistent_context(
-                user_data_dir=str(self.profile_dir),
-                **launch_options,
-                **context_options,
-            )
+            self.context = await self._launch_persistent_context(launch_options, context_options)
             self.browser = self.context.browser
             logger.info("Browser initialized successfully")
         except Exception as error:
             logger.error("Failed to initialize browser: %s", error)
+            await self.close()
             raise
+
+    async def _launch_persistent_context(self, launch_options, context_options):
+        # A lingering Chrome from a prior context can briefly hold the persistent
+        # profile lock — Playwright sometimes cannot kill real Chrome on close
+        # ("kill EPERM"), so the next launch fails with "Target page, context or
+        # browser has been closed". Retry with backoff so the launch survives the
+        # lock being released instead of aborting the whole request.
+        last_error: Exception | None = None
+        for attempt in range(4):
+            try:
+                return await self.playwright.chromium.launch_persistent_context(
+                    user_data_dir=str(self.profile_dir),
+                    **launch_options,
+                    **context_options,
+                )
+            except Exception as error:
+                last_error = error
+                logger.debug(
+                    "persistent context launch attempt %s failed: %s", attempt + 1, error
+                )
+                await asyncio.sleep(1.0 + attempt)
+        raise last_error if last_error is not None else RuntimeError("launch failed")
 
     def _build_launch_options(self) -> LaunchOptions:
         # Keep the argument set minimal and benign: real Chrome with few flags
@@ -146,20 +165,33 @@ class BrowserManager:
         return page
 
     async def close(self) -> None:
-        try:
-            if self.page:
+        # Each teardown step is independent: a failure closing the context must
+        # not skip closing the browser, otherwise a lingering Chrome keeps the
+        # persistent profile locked and the next launch fails. We always attempt
+        # browser.close() (even for a persistent context) to force Chrome down.
+        if self.page is not None:
+            try:
                 if not self.page.is_closed():
                     await self.page.close()
-                self.page = None
-            if self.context:
+            except Exception:
+                logger.debug("page close failed", exc_info=True)
+            self.page = None
+        if self.context is not None:
+            try:
                 await self.context.close()
-                self.context = None
-            if self.browser and not self._persistent_context:
+            except Exception:
+                logger.debug("context close failed", exc_info=True)
+            self.context = None
+        if self.browser is not None:
+            try:
                 await self.browser.close()
+            except Exception:
+                logger.debug("browser close failed", exc_info=True)
             self.browser = None
-            if self.playwright:
+        if self.playwright is not None:
+            try:
                 await self.playwright.stop()
-                self.playwright = None
-            logger.info("Browser closed successfully")
-        except Exception as error:
-            logger.error("Error closing browser: %s", error)
+            except Exception:
+                logger.debug("playwright stop failed", exc_info=True)
+            self.playwright = None
+        logger.info("Browser closed successfully")
