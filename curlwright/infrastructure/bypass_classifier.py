@@ -64,6 +64,19 @@ CHALLENGE_TEXT_PATTERNS = [
     "cf-wrapper",
 ]
 
+# The challenge-platform script loader is present in the HTML of ANY page that
+# embeds a Turnstile widget — including a page you have already cleared. Judging
+# a fetched response body, its mere presence is a false positive (the response
+# is the real content, not an interstitial). Real interstitials still carry the
+# strong markers below ("just a moment", "__cf_chl_", the cf-challenge/-wrapper
+# structure, the error-page CSS), so dropping only the embed-script markers
+# keeps interstitial detection intact while letting widget-embedding pages
+# through once their challenge has been solved.
+_EMBED_ONLY_PATTERNS = {"challenge-platform", "/cdn-cgi/challenge-platform/"}
+RESPONSE_CHALLENGE_PATTERNS = [
+    pattern for pattern in CHALLENGE_TEXT_PATTERNS if pattern not in _EMBED_ONLY_PATTERNS
+]
+
 TERMINAL_BLOCK_PATTERNS = [
     "incompatible browser extension or network configuration",
     "blocked the security verification process",
@@ -141,7 +154,7 @@ class BypassClassifier:
     RESPONSE_STRATEGIES = (
         SignalStrategy(
             name="challenge-text-pattern",
-            patterns=tuple(CHALLENGE_TEXT_PATTERNS),
+            patterns=tuple(RESPONSE_CHALLENGE_PATTERNS),
         ),
         SignalStrategy(
             name="block-text-pattern",
