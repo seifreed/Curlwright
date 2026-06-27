@@ -145,6 +145,9 @@ curlwright -c "curl https://target.example" --timeout 60 --retries 5 --delay 3
 | `--artifact-dir` | Directory for diagnostics, screenshots, HTML and logs |
 | `--profile-dir` | Override the persistent Chromium profile directory |
 | `--no-persist-cookies` | Disable automatic cookie load/save |
+| `--import-cookies` | Load cookies from a JSON file into the jar before the request |
+| `--export-cookies` | Write the captured session cookies to a JSON file after the request |
+| `--clear-cookies` | Clear the persistent cookie jar before the request |
 | `--bypass-attempts` | Challenge-resolution attempts per request |
 | `--retries` | Retry count after failures |
 | `--delay` | Delay between retries |
@@ -224,8 +227,8 @@ from curlwright.utils import CookieManager
 
 
 async def main() -> None:
-    cookies = CookieManager("cookies.pkl")
-    executor = RequestExecutor(headless=True, cookie_file="cookies.pkl")
+    cookies = CookieManager("cookies.json")
+    executor = RequestExecutor(headless=True, cookie_file="cookies.json")
     result = await executor.execute("curl https://example.com")
     print(result["status"])
     await executor.close()
