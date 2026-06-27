@@ -75,6 +75,11 @@ def test_parser_adds_https_scheme_when_missing():
     assert request.url == "https://example.com"
 
 
+def test_parser_rejects_unsupported_scheme():
+    with pytest.raises(ValueError, match="Unsupported URL scheme"):
+        CurlParser().parse("curl ftp://example.com")
+
+
 def test_parser_reads_headers_cookies_and_auth():
     request = CurlParser().parse(
         "curl -H 'Accept: application/json' -H 'X-Test: yes' "

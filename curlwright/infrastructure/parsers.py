@@ -104,8 +104,10 @@ class CurlParser:
 
         if not request.url:
             raise ValueError("No URL found in curl command")
-        if not request.url.startswith(("http://", "https://")):
+        if "://" not in request.url:
             request.url = "https://" + request.url
+        elif not request.url.startswith(("http://", "https://")):
+            raise ValueError(f"Unsupported URL scheme (only http/https): {request.url}")
         if append_data_to_query:
             if request.data:
                 query_pairs.extend(self._parse_form_pairs(request.data))
