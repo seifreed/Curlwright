@@ -11,6 +11,7 @@ from curlwright.infrastructure.factories import DefaultBrowserManagerFactory
 from curlwright.infrastructure.parsers import CurlParser
 from curlwright.infrastructure.persistence import CookieManager, DomainStateStore
 from curlwright.infrastructure.playwright_runtime import PlaywrightRequestRuntime
+from curlwright.paths import curlwright_home
 from curlwright.infrastructure.protection_runtime import (
     ConsoleTelemetry,
     PlaywrightArtifactStore,
@@ -36,9 +37,7 @@ def create_request_executor(
 ) -> ApplicationRequestExecutor:
     cookie_store = CookieManager(cookie_file) if persist_cookies else None
     artifact_root = (
-        Path(artifact_dir).expanduser()
-        if artifact_dir
-        else Path.home() / ".curlwright" / "artifacts"
+        Path(artifact_dir).expanduser() if artifact_dir else curlwright_home() / "artifacts"
     )
     return ApplicationRequestExecutor(
         parser=CurlParser(),

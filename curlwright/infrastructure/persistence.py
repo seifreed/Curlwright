@@ -12,6 +12,7 @@ from pathlib import Path
 from curlwright.domain import DomainBypassState
 from curlwright.infrastructure.fs import restrict_to_owner
 from curlwright.logger import setup_logger
+from curlwright.paths import curlwright_home
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
@@ -64,9 +65,7 @@ class CookieManager:
     """Manages browser cookies for session persistence."""
 
     def __init__(self, cookie_file: str | None = None):
-        self.cookie_file = (
-            Path(cookie_file) if cookie_file else Path.home() / ".curlwright" / "cookies.json"
-        )
+        self.cookie_file = Path(cookie_file) if cookie_file else curlwright_home() / "cookies.json"
         self.cookie_file.parent.mkdir(parents=True, exist_ok=True)
         # Load the persisted jar eagerly so has_cookies_for_domain reflects it
         # before any browser context is available (the trusted-session check
@@ -150,7 +149,7 @@ class DomainStateStore:
 
     def __init__(self, state_file: str | None = None):
         self.state_file = (
-            Path(state_file) if state_file else Path.home() / ".curlwright" / "bypass-state.json"
+            Path(state_file) if state_file else curlwright_home() / "bypass-state.json"
         )
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
         self._state: dict[str, DomainBypassState] = {}

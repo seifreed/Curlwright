@@ -21,6 +21,7 @@ from pathlib import Path
 from curlwright.domain import CurlRequest, FetchResponse
 from curlwright.logger import setup_logger
 from curlwright.infrastructure.playwright_runtime import PlaywrightRequestRuntime
+from curlwright.paths import curlwright_home
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
@@ -93,7 +94,7 @@ class NodriverBrowserManager:
         self.profile_dir = (
             Path(profile_dir).expanduser()
             if profile_dir
-            else Path.home() / ".curlwright" / "browser-profile-nodriver"
+            else curlwright_home() / "browser-profile-nodriver"
         )
         self.profile_dir.mkdir(parents=True, exist_ok=True)
         self._browser = None

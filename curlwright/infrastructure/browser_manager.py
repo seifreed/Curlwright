@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from curlwright.logger import setup_logger
+from curlwright.paths import curlwright_home
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
@@ -43,7 +44,7 @@ class BrowserManager:
         # stays consistent with the browser's real client hints.
         self.user_agent = user_agent
         self.profile_dir = (
-            Path(profile_dir) if profile_dir else Path.home() / ".curlwright" / "browser-profile"
+            Path(profile_dir) if profile_dir else curlwright_home() / "browser-profile"
         )
         self.profile_dir.mkdir(parents=True, exist_ok=True)
         self.playwright: "Playwright | None" = None

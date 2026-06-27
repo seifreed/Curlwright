@@ -39,6 +39,7 @@ from curlwright.domain import (
 )
 from curlwright.domain.policy import BypassPolicy
 from curlwright.logger import setup_logger
+from curlwright.paths import curlwright_home
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
@@ -98,7 +99,7 @@ class RequestExecutor:
         self.profile_dir = (
             str(Path(config.profile_dir).expanduser())
             if config.profile_dir
-            else str(Path.home() / ".curlwright" / "browser-profile")
+            else str(curlwright_home() / "browser-profile")
         )
 
         self.prepare_session = PrepareSession(http_runtime)
