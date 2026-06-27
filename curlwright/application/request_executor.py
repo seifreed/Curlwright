@@ -49,6 +49,9 @@ logger = setup_logger(__name__)
 type HttpCredentials = dict[str, str]
 type BrowserSignature = tuple[str | None, bool, tuple[str | None, str | None], str | None]
 
+# Reported when no user agent is pinned: real Chrome sends its own native UA.
+NATIVE_USER_AGENT = "chrome-native"
+
 
 class RequestExecutor:
     """Executes curl requests through application use cases and fine-grained ports."""
@@ -164,7 +167,7 @@ class RequestExecutor:
         for attempt in range(max_retries):
             effective_user_agent = self._get_retry_user_agent(attempt)
             attempt_record = AttemptRecord(
-                attempt=attempt + 1, user_agent=effective_user_agent or "chrome-native"
+                attempt=attempt + 1, user_agent=effective_user_agent or NATIVE_USER_AGENT
             )
             try:
                 await self._ensure_initialized(request, user_agent=effective_user_agent)
@@ -347,6 +350,10 @@ class RequestExecutor:
             artifact_dir=artifact_dir,
         )
 
+    @property
+    def _reported_user_agent(self) -> str:
+        return self._effective_user_agent or NATIVE_USER_AGENT
+
     async def _prepare_session(
         self, page, request: CurlRequest, *, timeout_ms: int, domain_key: str, fast: bool
     ):
@@ -374,7 +381,7 @@ class RequestExecutor:
         self.session_store.mark_success(
             domain_key=domain_key,
             domain=domain,
-            user_agent=self._effective_user_agent or "chrome-native",
+            user_agent=self._reported_user_agent,
             proxy=request.proxy,
             profile_dir=self.profile_dir,
             final_url=final_url,
@@ -394,7 +401,7 @@ class RequestExecutor:
         self.session_store.mark_failure(
             domain_key=domain_key,
             domain=domain,
-            user_agent=self._effective_user_agent or "chrome-native",
+            user_agent=self._reported_user_agent,
             proxy=request.proxy,
             profile_dir=self.profile_dir,
             final_url=final_url,
@@ -427,7 +434,7 @@ class RequestExecutor:
             [
                 self._extract_domain(request.url),
                 request.proxy or "direct",
-                self._effective_user_agent or "chrome-native",
+                self._reported_user_agent,
                 self.profile_dir,
             ]
         )
