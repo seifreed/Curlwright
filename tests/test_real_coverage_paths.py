@@ -228,7 +228,9 @@ async def test_playwright_runtime_and_application_executor_remaining_paths(tmp_p
         timeout_ms=100,
         trusted_session=True,
     )
-    assert page.gotos == ["https://example.com", "https://example.com/path"]
+    # Warm-up visits only the origin now; resolve_protection navigates the
+    # target itself, so warming it here would be a redundant double-navigation.
+    assert page.gotos == ["https://example.com"]
 
     class PageContext:
         async def cookies(self):

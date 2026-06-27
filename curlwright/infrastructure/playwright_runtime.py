@@ -103,10 +103,14 @@ class PlaywrightRequestRuntime:
         timeout_ms: int,
         trusted_session: bool,
     ) -> None:
+        # Warm up the origin only. resolve_protection always navigates the
+        # target URL itself next, so adding it here (previously done for trusted
+        # sessions) just loaded the same URL twice back-to-back — wasted a full
+        # navigation + interaction with no stealth benefit. trusted_session is
+        # kept on the signature for the runtime port contract.
+        _ = trusted_session
         base_url = self.extract_base_url(request.url)
         navigation_targets = [base_url]
-        if trusted_session:
-            navigation_targets.append(request.url)
 
         for index, navigate_url in enumerate(navigation_targets, start=1):
             try:
