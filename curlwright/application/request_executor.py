@@ -245,26 +245,24 @@ class RequestExecutor:
         domain_key = self._get_domain_session_key(request)
         artifact_dir: str | None = None
         try:
-            prepared = await self.prepare_session.execute(
-                page=page,
-                request=request,
+            prepared = await self._prepare_session(
+                page,
+                request,
                 timeout_ms=effective_timeout_ms,
-                trusted_session=self._has_trusted_session(request),
-                cookie_store=self.cookie_manager,
-                extract_domain=self._extract_domain,
                 domain_key=domain_key,
                 fast=self.fast,
             )
             if page.is_closed():
+                # The warm-up closed the page; retry on a fresh one. The retry
+                # always warms up (fast=False) even when the request opted into
+                # --fast, since a mid-flight close signals a fragile session.
                 page = await self.browser_manager.create_page()
-                prepared = await self.prepare_session.execute(
-                    page=page,
-                    request=request,
+                prepared = await self._prepare_session(
+                    page,
+                    request,
                     timeout_ms=effective_timeout_ms,
-                    trusted_session=self._has_trusted_session(request),
-                    cookie_store=self.cookie_manager,
-                    extract_domain=self._extract_domain,
                     domain_key=domain_key,
+                    fast=False,
                 )
             console_events = await self.resolve_protection.execute(
                 page=prepared.page,
@@ -346,6 +344,20 @@ class RequestExecutor:
             "Bypass (nodriver) did not reach a trusted page state",
             assessment=assessment,
             artifact_dir=artifact_dir,
+        )
+
+    async def _prepare_session(
+        self, page, request: CurlRequest, *, timeout_ms: int, domain_key: str, fast: bool
+    ):
+        return await self.prepare_session.execute(
+            page=page,
+            request=request,
+            timeout_ms=timeout_ms,
+            trusted_session=self._has_trusted_session(request),
+            cookie_store=self.cookie_manager,
+            extract_domain=self._extract_domain,
+            domain_key=domain_key,
+            fast=fast,
         )
 
     def _record_success(
