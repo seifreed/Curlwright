@@ -47,7 +47,7 @@ class BrowserManager:
             Path(profile_dir) if profile_dir else curlwright_home() / "browser-profile"
         )
         self.profile_dir.mkdir(parents=True, exist_ok=True)
-        self.playwright: "Playwright | None" = None
+        self.playwright: Playwright | None = None
         self.browser: Browser | None = None
         self.context: BrowserContext | None = None
         self.page: Page | None = None
