@@ -26,6 +26,7 @@ from curlwright.domain.core import (
     RuntimeMetadata,
     StateMetadata,
     TelemetryPort,
+    origin,
 )
 from curlwright.domain.policy import (
     BypassAction,
@@ -72,4 +73,5 @@ __all__ = [
     "StateMetadata",
     "TelemetryPort",
     "TrustedSession",
+    "origin",
 ]

@@ -6,6 +6,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
+from urllib.parse import urlparse
 
 from curlwright.runtime import ensure_supported_python
 
@@ -19,6 +20,12 @@ type JsonObject = dict[str, object]
 type ResponsePayload = dict[str, object]
 type CookieNames = list[str]
 type AuthCredentials = tuple[str, str]
+
+
+def origin(url: str) -> str:
+    """Scheme + authority of a URL (e.g. https://example.com), no path."""
+    parsed = urlparse(url)
+    return f"{parsed.scheme}://{parsed.netloc}"
 
 
 @dataclass

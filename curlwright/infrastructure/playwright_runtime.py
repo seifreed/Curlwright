@@ -4,7 +4,7 @@ import asyncio
 import base64
 import json
 
-from curlwright.domain import CurlRequest, FetchResponse
+from curlwright.domain import CurlRequest, FetchResponse, origin
 from curlwright.logger import setup_logger
 from curlwright.runtime import ensure_supported_python
 
@@ -195,7 +195,4 @@ class PlaywrightRequestRuntime:
         headers["Content-Type"] = content_type
 
     def extract_base_url(self, url: str) -> str:
-        from urllib.parse import urlparse
-
-        parsed = urlparse(url)
-        return f"{parsed.scheme}://{parsed.netloc}"
+        return origin(url)

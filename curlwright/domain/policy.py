@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from urllib.parse import urlparse
 
-from curlwright.domain.core import BypassAssessment
+from curlwright.domain.core import BypassAssessment, origin
 
 
 class ChallengeState(str, Enum):
@@ -128,5 +127,4 @@ class BypassPolicy:
         )
 
     def _base_url(self, target_url: str) -> str:
-        parsed = urlparse(target_url)
-        return f"{parsed.scheme}://{parsed.netloc}/"
+        return f"{origin(target_url)}/"
