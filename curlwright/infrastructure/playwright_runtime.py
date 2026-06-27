@@ -16,6 +16,11 @@ type FetchHeaders = dict[str, str]
 type FetchOptions = dict[str, str | FetchHeaders]
 
 
+def _has_header(headers, name: str) -> bool:
+    """Case-insensitive check for whether a header key is already present."""
+    return any(key.lower() == name.lower() for key in headers)
+
+
 class PlaywrightRequestRuntime:
     """Encapsulates warmup, header/cookie application, and final fetch execution."""
 
@@ -161,7 +166,7 @@ class PlaywrightRequestRuntime:
 
     def build_fetch_options(self, request: CurlRequest) -> FetchOptions:
         headers: FetchHeaders = dict(request.headers or {})
-        if request.auth and not any(key.lower() == "authorization" for key in headers):
+        if request.auth and not _has_header(headers, "authorization"):
             # curl's -u sends Basic auth preemptively; Playwright's reactive
             # http_credentials never fires for an in-page fetch, so set it here.
             username, password = request.auth
@@ -182,7 +187,7 @@ class PlaywrightRequestRuntime:
         headers = fetch_options["headers"]
         if not isinstance(headers, dict):
             raise TypeError("fetch headers must be a mapping")
-        if any(header.lower() == "content-type" for header in headers):
+        if _has_header(headers, "content-type"):
             return
         body = fetch_options["body"]
         content_type = "application/x-www-form-urlencoded"
