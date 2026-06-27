@@ -25,6 +25,7 @@ from curlwright.domain import (
     CurlRequest,
     ExecutionMetadata,
     ExecutionResult,
+    ExecutorConfig,
     HttpRuntimePort,
     PageProbePort,
     PersistedSessionPort,
@@ -64,23 +65,16 @@ class RequestExecutor:
         bypass_policy: BypassPolicy,
         session_store: PersistedSessionPort,
         cookie_store: CookieStorePort | None,
-        headless: bool = False,
-        timeout: int = 30,
-        user_agent: str | None = None,
-        no_gui: bool = False,
-        persist_cookies: bool = True,
-        bypass_attempts: int = 3,
-        profile_dir: str | None = None,
-        engine: str = "patchright",
-        fast: bool = False,
+        config: ExecutorConfig | None = None,
     ):
+        config = config or ExecutorConfig()
         self.browser_manager: BrowserManagerPort | None = None
-        self.default_timeout = timeout
-        self.headless = headless
-        self.engine = engine
-        self.fast = fast
-        self.user_agent = user_agent
-        self.no_gui = no_gui
+        self.default_timeout = config.timeout
+        self.headless = config.headless
+        self.engine = config.engine
+        self.fast = config.fast
+        self.user_agent = config.user_agent
+        self.no_gui = config.no_gui
         self.parser = parser
         self.http_runtime = http_runtime
         self.page_probe = page_probe
@@ -90,20 +84,20 @@ class RequestExecutor:
         self.bypass_policy = bypass_policy
         self.session_store = session_store
         self.initialized = False
-        self.persist_cookies = persist_cookies
-        self.cookie_manager = cookie_store if persist_cookies else None
+        self.persist_cookies = config.persist_cookies
+        self.cookie_manager = cookie_store if config.persist_cookies else None
         self._browser_signature: BrowserSignature | None = None
         # When no user agent is pinned we let real Chrome use its own native UA
         # (None), which keeps the UA consistent with the browser's client hints.
-        self._effective_user_agent = user_agent
+        self._effective_user_agent = config.user_agent
         self.browser_manager_factory = browser_manager_factory
         self.cookie_file = str(self.cookie_manager.cookie_file) if self.cookie_manager else None
         self.state_file = str(self.session_store.state_file)
         self.artifact_root = str(self.artifact_store.artifact_root)
-        self.bypass_attempts = bypass_attempts
+        self.bypass_attempts = config.bypass_attempts
         self.profile_dir = (
-            str(Path(profile_dir).expanduser())
-            if profile_dir
+            str(Path(config.profile_dir).expanduser())
+            if config.profile_dir
             else str(Path.home() / ".curlwright" / "browser-profile")
         )
 

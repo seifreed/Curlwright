@@ -2,7 +2,7 @@
 
 from curlwright.application import RequestExecutor as ApplicationRequestExecutor
 from curlwright.bootstrap import create_request_executor
-from curlwright.domain import ResponsePayload
+from curlwright.domain import ExecutorConfig, ResponsePayload
 
 
 class RequestExecutor(ApplicationRequestExecutor):
@@ -46,15 +46,17 @@ class RequestExecutor(ApplicationRequestExecutor):
             bypass_policy=wired_executor.bypass_policy,
             session_store=wired_executor.session_store,
             cookie_store=wired_executor.cookie_manager,
-            persist_cookies=persist_cookies,
-            headless=headless,
-            timeout=timeout,
-            user_agent=user_agent,
-            no_gui=no_gui,
-            bypass_attempts=bypass_attempts,
-            profile_dir=profile_dir,
-            engine=engine,
-            fast=fast,
+            config=ExecutorConfig(
+                headless=headless,
+                timeout=timeout,
+                user_agent=user_agent,
+                no_gui=no_gui,
+                persist_cookies=persist_cookies,
+                bypass_attempts=bypass_attempts,
+                profile_dir=profile_dir,
+                engine=engine,
+                fast=fast,
+            ),
         )
 
 

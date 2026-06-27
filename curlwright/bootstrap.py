@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from curlwright.application import RequestExecutor as ApplicationRequestExecutor
+from curlwright.domain import ExecutorConfig
 from curlwright.domain.policy import BypassPolicy
 from curlwright.infrastructure.factories import DefaultBrowserManagerFactory
 from curlwright.infrastructure.parsers import CurlParser
@@ -50,13 +51,15 @@ def create_request_executor(
         bypass_policy=BypassPolicy(),
         session_store=DomainStateStore(bypass_state_file),
         cookie_store=cookie_store,
-        headless=headless,
-        timeout=timeout,
-        user_agent=user_agent,
-        no_gui=no_gui,
-        persist_cookies=persist_cookies,
-        bypass_attempts=bypass_attempts,
-        profile_dir=profile_dir,
-        engine=engine,
-        fast=fast,
+        config=ExecutorConfig(
+            headless=headless,
+            timeout=timeout,
+            user_agent=user_agent,
+            no_gui=no_gui,
+            persist_cookies=persist_cookies,
+            bypass_attempts=bypass_attempts,
+            profile_dir=profile_dir,
+            engine=engine,
+            fast=fast,
+        ),
     )

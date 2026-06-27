@@ -11,6 +11,7 @@ from curlwright.domain import (
     BrowserSessionConfig,
     BypassAssessment,
     CurlRequest,
+    ExecutorConfig,
     FetchResponse,
 )
 from curlwright.domain.policy import BypassAction, BypassPolicy
@@ -342,10 +343,7 @@ async def test_playwright_runtime_and_application_executor_remaining_paths(tmp_p
         bypass_policy=BypassPolicy(),
         session_store=SessionStore(),
         cookie_store=None,
-        headless=True,
-        timeout=30,
-        no_gui=True,
-        profile_dir=str(tmp_path / "profile"),
+        config=ExecutorConfig(headless=True, no_gui=True, profile_dir=str(tmp_path / "profile")),
     )
     executor.resolve_protection = type(
         "ResolveProtection",

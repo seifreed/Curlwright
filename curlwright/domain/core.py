@@ -73,6 +73,22 @@ class BrowserSessionConfig:
 
 
 @dataclass
+class ExecutorConfig:
+    """Runtime knobs for the request executor, kept together so the single
+    source of truth for their defaults travels as one value across the wiring."""
+
+    timeout: int = 30
+    headless: bool = False
+    user_agent: str | None = None
+    no_gui: bool = False
+    persist_cookies: bool = True
+    bypass_attempts: int = 3
+    profile_dir: str | None = None
+    engine: str = "patchright"
+    fast: bool = False
+
+
+@dataclass
 class FetchResponse:
     status: int
     headers: HeaderMap
