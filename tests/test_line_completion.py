@@ -51,8 +51,8 @@ def test_package_cli_inserts_project_root_on_fresh_load():
 
 
 @pytest.mark.asyncio
-async def test_browser_manager_create_page_initializes_lazily():
-    manager = BrowserManager(headless=True, no_gui=True)
+async def test_browser_manager_create_page_initializes_lazily(tmp_path):
+    manager = BrowserManager(headless=True, no_gui=True, profile_dir=str(tmp_path / "profile"))
 
     try:
         page = await manager.create_page()
@@ -63,11 +63,12 @@ async def test_browser_manager_create_page_initializes_lazily():
 
 
 @pytest.mark.asyncio
-async def test_browser_manager_initializes_with_proxy_branch():
+async def test_browser_manager_initializes_with_proxy_branch(tmp_path):
     manager = BrowserManager(
         headless=True,
         no_gui=True,
         proxy="http://127.0.0.1:8888",
+        profile_dir=str(tmp_path / "profile"),
     )
 
     try:
