@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 
 from curlwright.domain import CurlRequest, FetchResponse
-from curlwright.infrastructure.logging import setup_logger
+from curlwright.logger import setup_logger
 from curlwright.infrastructure.playwright_runtime import PlaywrightRequestRuntime
 from curlwright.runtime import ensure_supported_python
 

@@ -5,7 +5,7 @@ import base64
 import json
 
 from curlwright.domain import CurlRequest, FetchResponse
-from curlwright.infrastructure.logging import setup_logger
+from curlwright.logger import setup_logger
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()

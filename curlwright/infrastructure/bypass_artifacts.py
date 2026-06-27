@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from curlwright.domain import BypassAssessment
-from curlwright.infrastructure.logging import setup_logger
+from curlwright.logger import setup_logger
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()

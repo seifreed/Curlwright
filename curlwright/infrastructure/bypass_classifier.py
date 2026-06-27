@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from curlwright.domain import BypassAssessment, FetchResponse
-from curlwright.infrastructure.logging import setup_logger
+from curlwright.logger import setup_logger
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()

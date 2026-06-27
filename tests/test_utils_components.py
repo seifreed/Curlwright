@@ -14,7 +14,7 @@ import pytest
 from curlwright.cli_parser import CLI
 from curlwright.domain import BypassAssessment
 from curlwright.infrastructure.bypass_artifacts import FailureArtifactStore
-from curlwright.infrastructure.logging import setup_logger
+from curlwright.logger import setup_logger
 from curlwright.infrastructure.persistence import CookieManager, DomainStateStore
 
 PERSISTENCE_LOGGER = "curlwright.infrastructure.persistence"

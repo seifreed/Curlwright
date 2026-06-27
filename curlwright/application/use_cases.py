@@ -20,7 +20,7 @@ from curlwright.domain import (
     TelemetryPort,
 )
 from curlwright.domain.policy import BypassAction, BypassDecision, BypassPolicy, TrustedSession
-from curlwright.infrastructure.logging import setup_logger
+from curlwright.logger import setup_logger
 
 logger = setup_logger(__name__)
 

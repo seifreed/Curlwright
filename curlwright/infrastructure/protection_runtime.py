@@ -12,7 +12,7 @@ from curlwright.infrastructure.bypass_classifier import (
     BypassClassifier,
     selector_exists,
 )
-from curlwright.infrastructure.logging import setup_logger
+from curlwright.logger import setup_logger
 
 logger = setup_logger(__name__)
 

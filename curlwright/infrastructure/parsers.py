@@ -5,7 +5,7 @@ import shlex
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from curlwright.domain import CurlRequest
-from curlwright.infrastructure.logging import setup_logger
+from curlwright.logger import setup_logger
 from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
