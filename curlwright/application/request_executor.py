@@ -320,6 +320,8 @@ class RequestExecutor:
         # page back through an in-page fetch; it does not go through the
         # page/use-case pipeline. Classification and session bookkeeping are
         # reused so the outcome is identical to the Patchright path.
+        if not self.browser_manager:
+            raise RuntimeError("Browser manager is not initialized")
         effective_timeout_ms = self._get_effective_timeout(request) * 1000
         domain = self._extract_domain(request.url)
         domain_key = self._get_domain_session_key(request)

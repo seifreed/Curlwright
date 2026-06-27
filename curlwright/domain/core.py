@@ -240,6 +240,10 @@ class BrowserManagerPort(Protocol):
 
     async def create_page(self): ...
 
+    async def fetch(
+        self, request: CurlRequest, *, timeout_ms: int
+    ) -> tuple[FetchResponse, list[str], str]: ...
+
     async def close(self) -> None: ...
 
 

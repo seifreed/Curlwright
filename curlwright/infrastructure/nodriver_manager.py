@@ -168,6 +168,8 @@ class NodriverBrowserManager:
         logger.debug("nodriver: challenge still present after wait window")
 
     async def _cookie_names(self) -> list[str]:
+        if self._browser is None:
+            return []
         try:
             cookies = await self._browser.cookies.get_all()
         except Exception:

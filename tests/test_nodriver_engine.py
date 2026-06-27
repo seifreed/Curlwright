@@ -43,8 +43,9 @@ def _executor(tmp_path):
 async def test_nodriver_success_returns_result(tmp_path):
     executor = _executor(tmp_path)
     executor.browser_manager = FakeNodriverManager(
-        FetchResponse(status=200, headers={}, body="<html>real content</html>",
-                      url="https://example.com/"),
+        FetchResponse(
+            status=200, headers={}, body="<html>real content</html>", url="https://example.com/"
+        ),
         cookie_names=["cf_clearance"],
     )
     request = CurlRequest(url="https://example.com/")
@@ -60,8 +61,12 @@ async def test_nodriver_success_returns_result(tmp_path):
 async def test_nodriver_blocked_raises_bypass_failure_and_writes_artifact(tmp_path):
     executor = _executor(tmp_path)
     executor.browser_manager = FakeNodriverManager(
-        FetchResponse(status=403, headers={}, body="<title>Just a moment...</title>",
-                      url="https://example.com/"),
+        FetchResponse(
+            status=403,
+            headers={},
+            body="<title>Just a moment...</title>",
+            url="https://example.com/",
+        ),
         html="<title>Just a moment...</title>",
     )
     request = CurlRequest(url="https://example.com/")

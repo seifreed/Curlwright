@@ -72,12 +72,16 @@ class BrowserManager:
             await self.close()
             raise
 
-    async def _launch_persistent_context(self, launch_options, context_options):
+    async def _launch_persistent_context(
+        self, launch_options: LaunchOptions, context_options: ContextOptions
+    ) -> "BrowserContext":
         # A lingering Chrome from a prior context can briefly hold the persistent
         # profile lock — Playwright sometimes cannot kill real Chrome on close
         # ("kill EPERM"), so the next launch fails with "Target page, context or
         # browser has been closed". Retry with backoff so the launch survives the
         # lock being released instead of aborting the whole request.
+        if self.playwright is None:
+            raise RuntimeError("Playwright is not initialized")
         last_error: Exception | None = None
         for attempt in range(4):
             try:
@@ -88,9 +92,7 @@ class BrowserManager:
                 )
             except Exception as error:
                 last_error = error
-                logger.debug(
-                    "persistent context launch attempt %s failed: %s", attempt + 1, error
-                )
+                logger.debug("persistent context launch attempt %s failed: %s", attempt + 1, error)
                 await asyncio.sleep(1.0 + attempt)
         raise last_error if last_error is not None else RuntimeError("launch failed")
 
@@ -136,6 +138,9 @@ class BrowserManager:
         if self.user_agent:
             options["user_agent"] = self.user_agent
         return options
+
+    async def fetch(self, request, *, timeout_ms):
+        raise NotImplementedError("Patchright engine uses create_page(); fetch is unused")
 
     async def create_page(self):
         if not self.context:
