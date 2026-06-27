@@ -31,6 +31,7 @@ def create_request_executor(
     bypass_attempts: int = 3,
     profile_dir: str | None = None,
     engine: str = "patchright",
+    fast: bool = False,
 ) -> ApplicationRequestExecutor:
     cookie_store = CookieManager(cookie_file) if persist_cookies else None
     artifact_root = (
@@ -57,4 +58,5 @@ def create_request_executor(
         bypass_attempts=bypass_attempts,
         profile_dir=profile_dir,
         engine=engine,
+        fast=fast,
     )

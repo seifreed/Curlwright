@@ -48,6 +48,7 @@ class PrepareSession:
         cookie_store,
         extract_domain,
         domain_key: str,
+        fast: bool = False,
     ) -> PreparedSession:
         await self.http_runtime.apply_request_context(page, request, extract_domain)
         await self.http_runtime.warm_up_page(
@@ -56,6 +57,7 @@ class PrepareSession:
             timeout_ms,
             cookie_manager=cookie_store,
             trusted_session=trusted_session,
+            fast=fast,
         )
         return PreparedSession(
             page=page,

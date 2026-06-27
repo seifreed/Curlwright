@@ -1,8 +1,53 @@
 import base64
 
+import pytest
+
 from curlwright.domain import CurlRequest
 from curlwright.executor import RequestExecutor
+from curlwright.infrastructure.playwright_runtime import PlaywrightRequestRuntime
 from curlwright.infrastructure.protection_runtime import PlaywrightPageProbe
+
+
+class _WarmFakePage:
+    def __init__(self):
+        self.gotos = []
+
+    async def goto(self, url, **_kwargs):
+        self.gotos.append(url)
+
+    async def bring_to_front(self):
+        pass
+
+    class _Mouse:
+        async def move(self, *a, **k):
+            pass
+
+        async def wheel(self, *a, **k):
+            pass
+
+    mouse = _Mouse()
+
+    async def evaluate(self, *a, **k):
+        pass
+
+    async def wait_for_load_state(self, *a, **k):
+        pass
+
+
+@pytest.mark.asyncio
+async def test_fast_mode_skips_warmup_navigation():
+    runtime = PlaywrightRequestRuntime()
+    request = CurlRequest(url="https://example.com/path")
+
+    slow = _WarmFakePage()
+    await runtime.warm_up_page(slow, request, 100, cookie_manager=None, trusted_session=False)
+    assert slow.gotos == ["https://example.com"]
+
+    fast = _WarmFakePage()
+    await runtime.warm_up_page(
+        fast, request, 100, cookie_manager=None, trusted_session=False, fast=True
+    )
+    assert fast.gotos == []
 
 
 def test_basic_auth_is_sent_preemptively_in_fetch_headers():

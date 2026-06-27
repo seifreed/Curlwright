@@ -61,7 +61,9 @@ class FakeRuntime:
     async def apply_request_context(self, page, request, extract_domain):
         self.calls.append(("apply", extract_domain(request.url)))
 
-    async def warm_up_page(self, page, request, timeout_ms, *, cookie_manager, trusted_session):
+    async def warm_up_page(
+        self, page, request, timeout_ms, *, cookie_manager, trusted_session, fast=False
+    ):
         self.calls.append(("warmup", timeout_ms, trusted_session, cookie_manager))
 
     async def perform_fetch_request(self, page, request, timeout_ms):

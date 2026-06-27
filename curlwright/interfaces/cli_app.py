@@ -117,6 +117,7 @@ async def main() -> None:
             bypass_attempts=args.bypass_attempts,
             profile_dir=args.profile_dir,
             engine=args.engine,
+            fast=args.fast,
         )
         _apply_pre_run_cookie_options(executor, args)
         curl_command = _resolve_curl_command(args)

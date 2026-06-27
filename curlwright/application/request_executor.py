@@ -72,11 +72,13 @@ class RequestExecutor:
         bypass_attempts: int = 3,
         profile_dir: str | None = None,
         engine: str = "patchright",
+        fast: bool = False,
     ):
         self.browser_manager: BrowserManagerPort | None = None
         self.default_timeout = timeout
         self.headless = headless
         self.engine = engine
+        self.fast = fast
         self.user_agent = user_agent
         self.no_gui = no_gui
         self.parser = parser
@@ -257,6 +259,7 @@ class RequestExecutor:
                 cookie_store=self.cookie_manager,
                 extract_domain=self._extract_domain,
                 domain_key=domain_key,
+                fast=self.fast,
             )
             if page.is_closed():
                 page = await self.browser_manager.create_page()

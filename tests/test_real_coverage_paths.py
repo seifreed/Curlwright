@@ -280,7 +280,9 @@ async def test_playwright_runtime_and_application_executor_remaining_paths(tmp_p
         async def apply_request_context(self, page, request, extract_domain):
             page.applied = extract_domain(request.url)
 
-        async def warm_up_page(self, page, request, timeout_ms, *, cookie_manager, trusted_session):
+        async def warm_up_page(
+            self, page, request, timeout_ms, *, cookie_manager, trusted_session, fast=False
+        ):
             page.warmed = True
 
         async def perform_fetch_request(self, page, request, timeout_ms):

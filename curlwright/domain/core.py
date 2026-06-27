@@ -338,6 +338,7 @@ class HttpRuntimePort(Protocol):
         *,
         cookie_manager: CookieStorePort | None,
         trusted_session: bool,
+        fast: bool = False,
     ) -> None: ...
 
     async def perform_fetch_request(

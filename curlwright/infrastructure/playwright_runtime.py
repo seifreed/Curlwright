@@ -27,9 +27,15 @@ class PlaywrightRequestRuntime:
         *,
         cookie_manager,
         trusted_session: bool,
+        fast: bool = False,
     ) -> None:
         if cookie_manager:
             await cookie_manager.load_cookies(page.context)
+        # Fast mode skips the stealth pre-visit + human simulation (its biggest
+        # fixed cost) for non-protected targets. Cookies are still loaded and the
+        # challenge-resolution path is untouched.
+        if fast:
+            return
         await self._simulate_human_warmup(
             page,
             request,

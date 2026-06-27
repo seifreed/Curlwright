@@ -136,6 +136,7 @@ curlwright -c "curl https://target.example" --timeout 60 --retries 5 --delay 3
 | `-f, --file` | File containing the curl command |
 | `--engine` | Browser engine: `patchright` (default) or `nodriver` (clears hardened managed challenges; headed only) |
 | `--headless` | Run Chromium headless |
+| `--fast` | Skip the stealth warm-up for non-protected targets (~20% faster; less stealthy, challenge path unchanged) |
 | `--no-gui` | Server-oriented mode without display requirements |
 | `--user-agent` | Override the browser user agent |
 | `--timeout` | Request timeout in seconds |

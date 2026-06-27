@@ -53,6 +53,16 @@ Examples:
             help="Run browser in headless mode (default: False)",
         )
         browser_group.add_argument(
+            "--fast",
+            action="store_true",
+            default=False,
+            help=(
+                "Skip the stealth warm-up navigation for faster requests to "
+                "non-protected targets. Less stealthy; the challenge-resolution "
+                "path is unchanged."
+            ),
+        )
+        browser_group.add_argument(
             "--no-gui",
             action="store_true",
             default=False,
