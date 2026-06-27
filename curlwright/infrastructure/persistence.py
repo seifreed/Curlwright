@@ -10,6 +10,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from curlwright.domain import DomainBypassState
+from curlwright.infrastructure.fs import restrict_to_owner
 from curlwright.logger import setup_logger
 from curlwright.runtime import ensure_supported_python
 
@@ -20,19 +21,6 @@ type CookieJar = list[CookieRecord]
 type CookieNames = list[str]
 
 logger = setup_logger(__name__)
-
-
-def _restrict_to_owner(path: Path) -> None:
-    """Restrict a credential file to owner read/write (0600).
-
-    The cookie jar and bypass state hold session/clearance cookies, which are
-    bearer credentials; the default 0644 would expose them to other local
-    users. chmod is best-effort (filesystems without POSIX modes are ignored).
-    """
-    try:
-        path.chmod(0o600)
-    except OSError as error:
-        logger.debug("Could not restrict permissions on %s: %s", path, error)
 
 
 def _atomic_write_private(path: Path, data: str) -> None:
@@ -133,7 +121,7 @@ class CookieManager:
         try:
             with open(output_file, "w") as file_handle:
                 json.dump(self.cookies, file_handle, indent=2)
-            _restrict_to_owner(Path(output_file))
+            restrict_to_owner(Path(output_file))
             logger.info("Exported cookies to %s", output_file)
         except Exception as error:
             logger.error("Failed to export cookies: %s", error)
