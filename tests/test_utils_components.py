@@ -267,6 +267,25 @@ def test_artifact_store_logs_destination(tmp_path, caplog):
             assert stat.S_IMODE(artifact_file.stat().st_mode) == 0o600
 
 
+def test_failure_artifact_store_save_blocked_html_writes_owner_only(tmp_path):
+    store = FailureArtifactStore(tmp_path / "artifacts")
+
+    artifact_dir = asyncio.run(
+        store.save_blocked_html(
+            "https://example.com/path", "<html>blocked</html>", "nodriver-blocked"
+        )
+    )
+
+    assert artifact_dir is not None
+    html_path = Path(artifact_dir) / "page.html"
+    assert html_path.read_text() == "<html>blocked</html>"
+    assert "nodriver-blocked" in artifact_dir
+
+    if os.name == "posix":
+        assert stat.S_IMODE(Path(artifact_dir).stat().st_mode) == 0o700
+        assert stat.S_IMODE(html_path.stat().st_mode) == 0o600
+
+
 def test_cookie_manager_save_load_export_import_and_clear(tmp_path):
     cookie_file = tmp_path / "cookies.pkl"
     json_file = tmp_path / "cookies.json"

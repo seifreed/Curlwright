@@ -66,6 +66,9 @@ class PlaywrightArtifactStore:
             label=label,
         )
 
+    async def save_blocked_html(self, url: str, html: str, label: str) -> str | None:
+        return await self._store.save_blocked_html(url, html, label)
+
 
 class PlaywrightPageProbe:
     def __init__(self):

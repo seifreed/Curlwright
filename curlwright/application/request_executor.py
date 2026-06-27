@@ -344,7 +344,9 @@ class RequestExecutor:
                 artifact_dir=None,
             )
             return ExecutionResult(response=response_data, outcome=outcome)
-        artifact_dir = self._save_nodriver_artifact(request.url, html)
+        artifact_dir = await self.artifact_store.save_blocked_html(
+            request.url, html, "nodriver-blocked"
+        )
         self.session_store.mark_failure(
             domain_key=domain_key,
             domain=domain,
@@ -359,21 +361,6 @@ class RequestExecutor:
             assessment=assessment,
             artifact_dir=artifact_dir,
         )
-
-    def _save_nodriver_artifact(self, url: str, html: str) -> str | None:
-        try:
-            from curlwright.infrastructure.bypass_artifacts import artifact_directory_name
-
-            artifact_dir = Path(self.artifact_root) / artifact_directory_name(
-                url, "nodriver-blocked"
-            )
-            artifact_dir.mkdir(parents=True, exist_ok=True)
-            (artifact_dir / "page.html").write_text(html or "")
-            logger.info("Saved nodriver blocked-response diagnostics to %s", artifact_dir)
-            return str(artifact_dir)
-        except Exception:
-            logger.debug("nodriver artifact save failed", exc_info=True)
-            return None
 
     def _extract_domain(self, url: str) -> str:
         parsed = urlparse(url)

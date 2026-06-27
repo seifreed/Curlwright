@@ -39,6 +39,23 @@ class FailureArtifactStore:
     def __init__(self, artifact_root: Path):
         self.artifact_root = artifact_root
 
+    async def save_blocked_html(self, url: str, html: str, label: str) -> str | None:
+        """Persist just the page HTML for engines (e.g. nodriver) that block
+        without a live Playwright page to screenshot. Returns the directory, or
+        None if the save fails (diagnostics must never break a request)."""
+        try:
+            artifact_dir = self.artifact_root / artifact_directory_name(url, label)
+            artifact_dir.mkdir(parents=True, exist_ok=True)
+            _restrict_to_owner(artifact_dir, 0o700)
+            html_path = artifact_dir / "page.html"
+            html_path.write_text(html or "")
+            _restrict_to_owner(html_path, 0o600)
+            logger.info("Saved %s diagnostics to %s", label, artifact_dir)
+            return str(artifact_dir)
+        except Exception:
+            logger.debug("%s artifact save failed", label, exc_info=True)
+            return None
+
     async def collect(
         self,
         *,
