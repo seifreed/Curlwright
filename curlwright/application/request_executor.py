@@ -279,12 +279,10 @@ class RequestExecutor:
                 console_events=console_events,
             )
             context_cookies = await prepared.page.context.cookies()
-            self.session_store.mark_success(
-                domain_key=prepared.domain_key,
+            self._record_success(
+                request,
                 domain=prepared.domain,
-                user_agent=self._effective_user_agent or "chrome-native",
-                proxy=request.proxy,
-                profile_dir=self.profile_dir,
+                domain_key=prepared.domain_key,
                 final_url=response_data.url or request.url,
                 cookie_names=[
                     cookie.get("name", "") for cookie in context_cookies if cookie.get("name")
@@ -293,12 +291,10 @@ class RequestExecutor:
             )
             return ExecutionResult(response=response_data, outcome=outcome)
         except BypassFailure as error:
-            self.session_store.mark_failure(
-                domain_key=domain_key,
+            self._record_failure(
+                request,
                 domain=domain,
-                user_agent=self._effective_user_agent or "chrome-native",
-                proxy=request.proxy,
-                profile_dir=self.profile_dir,
+                domain_key=domain_key,
                 final_url=error.assessment.final_url,
                 artifact_dir=error.artifact_dir,
             )
@@ -327,12 +323,10 @@ class RequestExecutor:
             ProtectionSnapshot.from_assessment(assessment)
         )
         if outcome.kind == "success":
-            self.session_store.mark_success(
-                domain_key=domain_key,
+            self._record_success(
+                request,
                 domain=domain,
-                user_agent=self._effective_user_agent or "chrome-native",
-                proxy=request.proxy,
-                profile_dir=self.profile_dir,
+                domain_key=domain_key,
                 final_url=response_data.url or request.url,
                 cookie_names=cookie_names,
                 artifact_dir=None,
@@ -341,18 +335,56 @@ class RequestExecutor:
         artifact_dir = await self.artifact_store.save_blocked_html(
             request.url, html, "nodriver-blocked"
         )
-        self.session_store.mark_failure(
-            domain_key=domain_key,
+        self._record_failure(
+            request,
             domain=domain,
-            user_agent=self._effective_user_agent or "chrome-native",
-            proxy=request.proxy,
-            profile_dir=self.profile_dir,
+            domain_key=domain_key,
             final_url=assessment.final_url,
             artifact_dir=artifact_dir,
         )
         raise BypassFailure(
             "Bypass (nodriver) did not reach a trusted page state",
             assessment=assessment,
+            artifact_dir=artifact_dir,
+        )
+
+    def _record_success(
+        self,
+        request: CurlRequest,
+        *,
+        domain: str,
+        domain_key: str,
+        final_url: str,
+        cookie_names: list[str],
+        artifact_dir: str | None,
+    ) -> None:
+        self.session_store.mark_success(
+            domain_key=domain_key,
+            domain=domain,
+            user_agent=self._effective_user_agent or "chrome-native",
+            proxy=request.proxy,
+            profile_dir=self.profile_dir,
+            final_url=final_url,
+            cookie_names=cookie_names,
+            artifact_dir=artifact_dir,
+        )
+
+    def _record_failure(
+        self,
+        request: CurlRequest,
+        *,
+        domain: str,
+        domain_key: str,
+        final_url: str,
+        artifact_dir: str | None,
+    ) -> None:
+        self.session_store.mark_failure(
+            domain_key=domain_key,
+            domain=domain,
+            user_agent=self._effective_user_agent or "chrome-native",
+            proxy=request.proxy,
+            profile_dir=self.profile_dir,
+            final_url=final_url,
             artifact_dir=artifact_dir,
         )
 
