@@ -10,7 +10,7 @@ from curlwright.runtime import ensure_supported_python
 
 ensure_supported_python()
 
-__version__ = "2.0.1"
+__version__ = "3.0.0"
 
 __all__ = [
     "RequestExecutor",
