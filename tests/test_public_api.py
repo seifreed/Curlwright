@@ -32,7 +32,12 @@ def test_submodule_exports_match_documented_api():
 
 
 def test_package_version_is_consistent():
-    assert __version__ == "2.0.1"
+    import tomllib
+    from pathlib import Path
+
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    declared_version = tomllib.loads(pyproject.read_text())["project"]["version"]
+    assert __version__ == declared_version
     assert get_version() == __version__
 
 
